@@ -1,6 +1,12 @@
 import { useState } from 'react'
-import { Gamepad, LayoutGrid, Settings2, Swords, Users } from 'lucide-react'
+import { Crosshair, Gamepad, LayoutGrid, Settings2, Swords, Users } from 'lucide-react'
 import { SquadDataProvider } from '../context/SquadDataContext'
+import { FortniteDataProvider } from '../context/FortniteDataContext'
+import FnFilterBar from '../components/FnFilterBar'
+import FnLeaderboard from '../components/gadgets/FnLeaderboard'
+import FnMatchTracker from '../components/gadgets/FnMatchTracker'
+import FnRecords from '../components/gadgets/FnRecords'
+import FnSessionRecap from '../components/gadgets/FnSessionRecap'
 import { useGadgetPrefs } from '../lib/useGadgetPrefs'
 import OwFilterBar from '../components/OwFilterBar'
 import GadgetCustomizer, { GroupChips } from '../components/GadgetCustomizer'
@@ -51,13 +57,26 @@ const SECTIONS = [
     ],
   },
   {
+    id: 'fortnite',
+    title: 'Fortnite',
+    short: 'FN',
+    icon: Crosshair,
+    actions: <FnFilterBar />,
+    gadgets: [
+      { id: 'fn-tracker', title: 'Match Tracker', Component: FnMatchTracker },
+      { id: 'fn-leaderboard', title: 'Fortnite Leaderboard', Component: FnLeaderboard, span: 'xl:col-span-2' },
+      { id: 'fn-session', title: 'Session Recap', Component: FnSessionRecap },
+      { id: 'fn-records', title: 'Records', Component: FnRecords },
+      { id: 'sprites', title: 'Sprite Checklist', Component: SpriteChecklist },
+    ],
+  },
+  {
     id: 'boards',
     title: 'Boards',
     icon: Gamepad,
     gadgets: [
       { id: 'bounties', title: 'Bounty Board', Component: BountyBoard },
       { id: 'goals', title: 'Squad Goals', Component: SquadGoals },
-      { id: 'sprites', title: 'Sprite Checklist', Component: SpriteChecklist, span: 'lg:col-span-2 xl:col-span-1' },
     ],
   },
 ]
@@ -87,6 +106,7 @@ export default function Dashboard() {
 
   return (
     <SquadDataProvider>
+      <FortniteDataProvider>
       <div className="space-y-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <GroupChips sections={SECTIONS} isVisible={isVisible} setVisible={setVisible} />
@@ -127,6 +147,7 @@ export default function Dashboard() {
           ))
         )}
       </div>
+      </FortniteDataProvider>
     </SquadDataProvider>
   )
 }

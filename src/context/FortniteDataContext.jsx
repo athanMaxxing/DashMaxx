@@ -1,0 +1,64 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { FN_MATCH_SELECT, FN_MATCHES_CHANGED_EVENT } from '../lib/fortnite'
+
+/** Shared Fortnite matches + global Fortnite filters (mode / fill / dropped together). */
+const FortniteDataContext = createContext(null)
+
+const EMPTY_FILTERS = { mode: '', fill: '', dropped: '' }
+
+export function FortniteDataProvider({ children }) {
+  const [matches, setMatches] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+
+  const reload = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    const { data, error: err } = await supabase
+      .from('fn_matches')
+      .select(FN_MATCH_SELECT)
+      .order('created_at', { ascending: false })
+    if (err) setError(err.message)
+    else setMatches(data)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    reload()
+    window.addEventListener(FN_MATCHES_CHANGED_EVENT, reload)
+    return () => window.removeEventListener(FN_MATCHES_CHANGED_EVENT, reload)
+  }, [reload])
+
+  const value = useMemo(() => {
+    const modes = [...new Set(matches.map((m) => m.mode))].sort()
+    const filteredMatches = matches.filter(
+      (m) =>
+        (!filters.mode || m.mode === filters.mode) &&
+        (!filters.fill || String(m.fill) === filters.fill) &&
+        (!filters.dropped || String(m.dropped_together) === filters.dropped),
+    )
+    return {
+      matches,
+      filteredMatches,
+      modes,
+      lastMode: matches[0]?.mode ?? '',
+      filters,
+      setFilter: (key, val) => setFilters((f) => ({ ...f, [key]: val })),
+      clearFilters: () => setFilters(EMPTY_FILTERS),
+      filtersActive: Boolean(filters.mode || filters.fill || filters.dropped),
+      loading,
+      error,
+      reload,
+    }
+  }, [matches, filters, loading, error, reload])
+
+  return <FortniteDataContext.Provider value={value}>{children}</FortniteDataContext.Provider>
+}
+
+export function useFortniteData() {
+  const ctx = useContext(FortniteDataContext)
+  if (!ctx) throw new Error('useFortniteData must be used inside <FortniteDataProvider>')
+  return ctx
+}
