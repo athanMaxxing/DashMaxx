@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Crosshair, Plus, RefreshCw, Target } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { BOUNTIES_CHANGED_EVENT } from '../../lib/time'
 import { useAuth } from '../../context/AuthContext'
 import GadgetCard, { GadgetMessage } from '../GadgetCard'
 
@@ -39,6 +40,8 @@ export default function BountyBoard() {
 
   useEffect(() => {
     load()
+    window.addEventListener(BOUNTIES_CHANGED_EVENT, load)
+    return () => window.removeEventListener(BOUNTIES_CHANGED_EVENT, load)
   }, [load])
 
   const { open, claimed } = useMemo(

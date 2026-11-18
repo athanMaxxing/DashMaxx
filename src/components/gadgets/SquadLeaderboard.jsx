@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, Trophy, RefreshCw, Users } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
-import { isWin, MATCH_SELECT, MATCHES_CHANGED_EVENT, STAT_FIELDS } from '../../lib/overwatch'
+import { useSquadData } from '../../context/SquadDataContext'
+import { isWin, playedTogether, STAT_FIELDS } from '../../lib/overwatch'
 import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import PlayerPicker from '../PlayerPicker'
 
 // Columns where a lower number is better.
 const LOWER_IS_BETTER = new Set(['deaths'])
@@ -72,43 +73,13 @@ function buildLeaderboard(matches, playerIds) {
 
 export default function SquadLeaderboard() {
   const { user } = useAuth()
-  const [profiles, setProfiles] = useState([])
-  const [matches, setMatches] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { profiles, filteredMatches: matches, loading, error, reload: load } = useSquadData()
   const [together, setTogether] = useState([]) // profile ids that must ALL be in the match
   const [sort, setSort] = useState({ key: 'winRate', dir: 'desc' })
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    const [profilesRes, matchesRes] = await Promise.all([
-      supabase.from('profiles').select('id, username').order('username'),
-      supabase.from('ow_matches').select(MATCH_SELECT),
-    ])
-    if (profilesRes.error || matchesRes.error) {
-      setError((profilesRes.error || matchesRes.error).message)
-    } else {
-      setProfiles(profilesRes.data)
-      setMatches(matchesRes.data)
-    }
-    setLoading(false)
-  }, [])
-
-  useEffect(() => {
-    load()
-    window.addEventListener(MATCHES_CHANGED_EVENT, load)
-    return () => window.removeEventListener(MATCHES_CHANGED_EVENT, load)
-  }, [load])
-
   // With a squad selected: only matches where ALL of them played, and only their rows.
   const { rows, matchCount } = useMemo(() => {
-    const scoped = together.length
-      ? matches.filter((m) => {
-          const present = new Set(m.ow_match_stats.map((s) => s.player_id))
-          return together.every((id) => present.has(id))
-        })
-      : matches
+    const scoped = playedTogether(matches, together)
     const ids = together.length ? new Set(together) : null
     return { rows: buildLeaderboard(scoped, ids), matchCount: scoped.length }
   }, [matches, together])
@@ -144,8 +115,6 @@ export default function SquadLeaderboard() {
         : { key, dir: key === 'username' || LOWER_IS_BETTER.has(key) ? 'asc' : 'desc' },
     )
 
-  const toggleTogether = (id) =>
-    setTogether((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
 
   const SortIcon = sort.dir === 'asc' ? ArrowUp : ArrowDown
   const header = (key, label, align = 'right') => (
@@ -172,48 +141,18 @@ export default function SquadLeaderboard() {
         </button>
       }
     >
-      {profiles.length > 0 && (
-        <div className="mb-4">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-gray-400">
-              <Users className="h-3.5 w-3.5" /> Played together
-            </span>
-            {together.length > 0 && (
-              <button className="text-xs text-indigo-400 hover:underline" onClick={() => setTogether([])}>
-                Clear
-              </button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {profiles.map((p) => {
-              const on = together.includes(p.id)
-              return (
-                <label
-                  key={p.id}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition ${
-                    on
-                      ? 'border-indigo-500 bg-indigo-500/20 text-indigo-200'
-                      : 'border-gray-700 text-gray-400 hover:border-gray-500'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className="h-3 w-3 accent-indigo-500"
-                    checked={on}
-                    onChange={() => toggleTogether(p.id)}
-                  />
-                  {p.username}
-                </label>
-              )
-            })}
-          </div>
-          <p className="mt-2 text-xs text-gray-500">
-            {together.length
-              ? `${matchCount} match${matchCount === 1 ? '' : 'es'} with all ${together.length} selected together · stats from those games only`
-              : `All ${matchCount} logged match${matchCount === 1 ? '' : 'es'} · tick players to see how they do together`}
-          </p>
-        </div>
-      )}
+      <PlayerPicker
+        profiles={profiles}
+        selected={together}
+        onChange={setTogether}
+        label="Played together"
+        icon={Users}
+        hint={
+          together.length
+            ? `${matchCount} match${matchCount === 1 ? '' : 'es'} with all ${together.length} selected together · stats from those games only`
+            : `${matchCount} match${matchCount === 1 ? '' : 'es'} · tick players to see how they do together`
+        }
+      />
 
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>

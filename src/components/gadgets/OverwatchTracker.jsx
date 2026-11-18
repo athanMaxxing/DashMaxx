@@ -1,9 +1,24 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, Filter, Plus, RefreshCw, Swords, Trash2, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import { useSquadData } from '../../context/SquadDataContext'
 import GadgetCard, { GadgetMessage } from '../GadgetCard'
-import { isWin, MATCH_SELECT, MATCHES_CHANGED_EVENT, OW_HEROES, OW_MAPS, STAT_FIELDS } from '../../lib/overwatch'
+import PlayerPicker from '../PlayerPicker'
+import {
+  DEFAULT_SEASON,
+  isWin,
+  MATCHES_CHANGED_EVENT,
+  MODES,
+  modeForMap,
+  modeLabel,
+  OW_HEROES,
+  OW_MAPS,
+  playedTogether,
+  QUEUES,
+  queueLabel,
+  STAT_FIELDS,
+} from '../../lib/overwatch'
 
 const emptyPlayer = (playerId = '') => ({
   player_id: playerId,
@@ -13,54 +28,19 @@ const emptyPlayer = (playerId = '') => ({
 
 export default function OverwatchTracker() {
   const { user } = useAuth()
-  const [profiles, setProfiles] = useState([])
-  const [matches, setMatches] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { profiles, matches, filteredMatches, latestSeason, filtersActive, loading, error, reload } =
+    useSquadData()
 
   const [showForm, setShowForm] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
   const [compFilter, setCompFilter] = useState([]) // profile ids that must ALL be present
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    const [profilesRes, matchesRes] = await Promise.all([
-      supabase.from('profiles').select('id, username').order('username'),
-      supabase
-        .from('ow_matches')
-        .select(MATCH_SELECT)
-        .order('created_at', { ascending: false })
-        .limit(100),
-    ])
-    if (profilesRes.error || matchesRes.error) {
-      setError((profilesRes.error || matchesRes.error).message)
-    } else {
-      setProfiles(profilesRes.data)
-      setMatches(matchesRes.data)
-    }
-    setLoading(false)
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  const filteredMatches = useMemo(() => {
-    if (compFilter.length === 0) return matches
-    return matches.filter((m) => {
-      const present = new Set(m.ow_match_stats.map((s) => s.player_id))
-      return compFilter.every((id) => present.has(id))
-    })
-  }, [matches, compFilter])
+  const shown = useMemo(() => playedTogether(filteredMatches, compFilter), [filteredMatches, compFilter])
 
   const record = useMemo(() => {
-    const wins = filteredMatches.filter((m) => isWin(m.result)).length
-    return { wins, losses: filteredMatches.length - wins }
-  }, [filteredMatches])
-
-  const toggleFilter = (id) =>
-    setCompFilter((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+    const wins = shown.filter((m) => isWin(m.result)).length
+    return { wins, losses: shown.length - wins }
+  }, [shown])
 
   return (
     <GadgetCard
@@ -68,7 +48,7 @@ export default function OverwatchTracker() {
       icon={Swords}
       actions={
         <div className="flex gap-1">
-          <button className="btn-ghost p-1.5" onClick={load} title="Refresh" disabled={loading}>
+          <button className="btn-ghost p-1.5" onClick={reload} title="Refresh" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button className="btn-primary py-1.5" onClick={() => setShowForm((v) => !v)}>
@@ -82,59 +62,29 @@ export default function OverwatchTracker() {
         <MatchForm
           profiles={profiles}
           currentUserId={user.id}
+          defaultSeason={latestSeason || DEFAULT_SEASON}
+          lastQueue={matches[0]?.queue ?? 'competitive'}
           onSaved={() => {
             setShowForm(false)
-            load()
             window.dispatchEvent(new Event(MATCHES_CHANGED_EVENT))
           }}
         />
       )}
 
-      {/* Composition filter */}
-      {profiles.length > 0 && (
-        <div className="mb-4">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-gray-400">
-              <Filter className="h-3.5 w-3.5" /> Composition filter
-            </span>
-            {compFilter.length > 0 && (
-              <button className="text-xs text-indigo-400 hover:underline" onClick={() => setCompFilter([])}>
-                Clear
-              </button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {profiles.map((p) => {
-              const on = compFilter.includes(p.id)
-              return (
-                <label
-                  key={p.id}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition ${
-                    on
-                      ? 'border-indigo-500 bg-indigo-500/20 text-indigo-200'
-                      : 'border-gray-700 text-gray-400 hover:border-gray-500'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className="h-3 w-3 accent-indigo-500"
-                    checked={on}
-                    onChange={() => toggleFilter(p.id)}
-                  />
-                  {p.username}
-                </label>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      <PlayerPicker
+        profiles={profiles}
+        selected={compFilter}
+        onChange={setCompFilter}
+        label="Composition filter"
+        icon={Filter}
+      />
 
-      {!loading && !error && filteredMatches.length > 0 && (
+      {!loading && !error && shown.length > 0 && (
         <p className="mb-2 text-xs text-gray-400">
-          {filteredMatches.length} match{filteredMatches.length === 1 ? '' : 'es'} ·{' '}
+          {shown.length} match{shown.length === 1 ? '' : 'es'} ·{' '}
           <span className="text-green-400">{record.wins}W</span> /{' '}
           <span className="text-red-400">{record.losses}L</span> ·{' '}
-          {Math.round((record.wins / filteredMatches.length) * 100)}% win rate
+          {Math.round((record.wins / shown.length) * 100)}% win rate
         </p>
       )}
 
@@ -142,13 +92,17 @@ export default function OverwatchTracker() {
         <GadgetMessage tone="error">{error}</GadgetMessage>
       ) : loading && matches.length === 0 ? (
         <GadgetMessage>Loading matches…</GadgetMessage>
-      ) : filteredMatches.length === 0 ? (
+      ) : shown.length === 0 ? (
         <GadgetMessage>
-          {compFilter.length ? 'No matches with that exact squad together.' : 'No matches logged yet.'}
+          {compFilter.length
+            ? 'No matches with that exact squad together.'
+            : filtersActive
+              ? 'No matches for these filters.'
+              : 'No matches logged yet.'}
         </GadgetMessage>
       ) : (
         <ul className="max-h-[28rem] space-y-1.5 overflow-y-auto pr-1">
-          {filteredMatches.map((m) => (
+          {shown.slice(0, 100).map((m) => (
             <MatchRow
               key={m.id}
               match={m}
@@ -161,6 +115,7 @@ export default function OverwatchTracker() {
     </GadgetCard>
   )
 }
+
 
 function MatchRow({ match, expanded, onToggle }) {
   const win = isWin(match.result)
@@ -176,8 +131,14 @@ function MatchRow({ match, expanded, onToggle }) {
         >
           {win ? 'WIN' : 'LOSS'}
         </span>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{match.map}</span>
-        <span className="shrink-0 text-xs text-gray-500">
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {match.map}
+          <span className="ml-2 text-xs font-normal text-gray-500">
+            {modeLabel(match.mode)}
+            {match.queue === 'quickplay' && ' · QP'}
+          </span>
+        </span>
+        <span className="shrink-0 text-xs text-gray-500" title={`${match.season ?? ''} · ${queueLabel(match.queue)}`}>
           {match.ow_match_stats.length}p · {new Date(match.created_at).toLocaleDateString()}
         </span>
       </button>
@@ -219,9 +180,18 @@ function MatchRow({ match, expanded, onToggle }) {
   )
 }
 
-function MatchForm({ profiles, currentUserId, onSaved }) {
+function MatchForm({ profiles, currentUserId, defaultSeason, lastQueue, onSaved }) {
   const [map, setMap] = useState('')
+  const [mode, setMode] = useState('')
+  const [season, setSeason] = useState(defaultSeason)
+  const [queue, setQueue] = useState(lastQueue)
   const [result, setResult] = useState('win')
+
+  const handleMapChange = (value) => {
+    setMap(value)
+    const auto = modeForMap(value)
+    if (auto) setMode(auto)
+  }
   const [players, setPlayers] = useState(() => [emptyPlayer(currentUserId)])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -243,7 +213,7 @@ function MatchForm({ profiles, currentUserId, onSaved }) {
       // 1) Insert the match and get its id back.
       const { data: match, error: matchErr } = await supabase
         .from('ow_matches')
-        .insert({ map: map.trim(), result })
+        .insert({ map: map.trim(), result, mode: mode || null, season: season.trim() || null, queue })
         .select('id')
         .single()
       if (matchErr) throw matchErr
@@ -276,7 +246,7 @@ function MatchForm({ profiles, currentUserId, onSaved }) {
           list="ow-maps"
           placeholder="Map"
           value={map}
-          onChange={(e) => setMap(e.target.value)}
+          onChange={(e) => handleMapChange(e.target.value)}
           required
         />
         <datalist id="ow-maps">
@@ -307,6 +277,31 @@ function MatchForm({ profiles, currentUserId, onSaved }) {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <select className="input" value={mode} onChange={(e) => setMode(e.target.value)} aria-label="Mode">
+          <option value="">Mode…</option>
+          {MODES.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+        <input
+          className="input"
+          value={season}
+          onChange={(e) => setSeason(e.target.value)}
+          placeholder="Season"
+          aria-label="Season"
+        />
+        <select className="input" value={queue} onChange={(e) => setQueue(e.target.value)} aria-label="Queue">
+          {QUEUES.map((q) => (
+            <option key={q.value} value={q.value}>
+              {q.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="space-y-2">
