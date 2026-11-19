@@ -196,7 +196,7 @@ export default function Dashboard() {
       <FortniteDataProvider>
         <div className="space-y-6">
           {/* Tab bar */}
-          <div className="sticky top-16 z-10 -mx-3 border-b border-white/[0.06] bg-gray-950/70 px-3 py-2 backdrop-blur-xl sm:-mx-4 sm:px-4">
+          <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 -mx-3 border-b border-white/[0.06] bg-gray-950/70 px-3 py-2 backdrop-blur-xl sm:-mx-4 sm:px-4">
             <div className="flex items-center gap-2">
               <nav className="-my-1 flex min-w-0 flex-1 gap-1 overflow-x-auto py-1 [scrollbar-width:none]">
                 {tabs.map((t) => {

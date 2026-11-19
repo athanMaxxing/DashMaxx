@@ -37,7 +37,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2">
+      <div className="pointer-events-none fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-50 flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2">
         {toasts.map((t) => {
           const { icon: Icon, cls } = STYLES[t.type]
           return (

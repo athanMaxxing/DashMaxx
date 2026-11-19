@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarDays, Crosshair, Gamepad2, LogIn, Swords, Trophy, UserPlus } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import InstallApp from '../components/InstallApp'
 
 const FEATURES = [
   { icon: Swords, text: 'Overwatch match tracking & leaderboards' },
@@ -60,7 +61,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center px-4 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))]">
       <div className="grid w-full max-w-4xl items-center gap-10 md:grid-cols-2">
         <div className="hidden md:block">
           <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-glow">
@@ -166,6 +167,9 @@ export default function Login() {
               {busy ? 'Please wait…' : isSignup ? 'Create account' : 'Log in'}
             </button>
           </form>
+          <div className="mt-4 flex justify-center">
+            <InstallApp />
+          </div>
         </div>
       </div>
     </div>
