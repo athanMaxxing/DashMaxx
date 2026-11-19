@@ -61,7 +61,7 @@ export default function GadgetCustomizer({ sections, isVisible, setVisible, onCl
   const allIds = sections.flatMap((s) => s.gadgets.map((g) => g.id))
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900/80 p-4 shadow-xl">
+    <div className="card animate-fade-up p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-200">Choose your gadgets</h3>
         <div className="flex items-center gap-3">
