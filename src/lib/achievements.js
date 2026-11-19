@@ -23,7 +23,7 @@ export const ACHIEVEMENTS = [
   { id: 'fn-solo-win', group: 'Fortnite', emoji: '🐺', title: 'Lone Wolf', desc: 'Win a Solo game', progress: (s) => [s.fn.soloWins, 1] },
   { id: 'fn-100-kills', group: 'Fortnite', emoji: '💀', title: 'Century', desc: '100 Fortnite kills in total', progress: (s) => [s.fn.kills, 100] },
   { id: 'fn-sprites-25', group: 'Fortnite', emoji: '✨', title: 'Sprite Hunter', desc: 'Collect 25 sprite variants', progress: (s) => [s.sprites.ticks, 25] },
-  { id: 'fn-sprites-all', group: 'Fortnite', emoji: '🌈', title: "Gotta Catch 'Em All", desc: 'Collect every sprite variant in a season', progress: (s) => [s.sprites.bestSeasonPct, 100] },
+  { id: 'fn-sprites-all', group: 'Fortnite', emoji: '🌈', title: "Gotta Catch 'Em All", desc: 'Collect every sprite variant in a season', progress: (s) => [s.sprites.bestOwned, s.sprites.bestTotal || 1] },
 
   // Squad
   { id: 'bounty-5', group: 'Squad', emoji: '🤠', title: 'Bounty Hunter', desc: 'Claim 5 bounties', progress: (s) => [s.squad.claimed, 5] },
@@ -35,7 +35,7 @@ export const ACHIEVEMENTS = [
 const emptyStats = () => ({
   ow: { games: 0, wins: 0, bestStreak: 0, maxElims: 0, maxDamage: 0, maxHealing: 0, maxMitigation: 0, heroes: 0 },
   fn: { games: 0, wins: 0, maxKills: 0, soloWins: 0, kills: 0 },
-  sprites: { ticks: 0, bestSeasonPct: 0 },
+  sprites: { ticks: 0, bestOwned: 0, bestTotal: 0 }, // best = the season closest to complete
   squad: { claimed: 0, quoted: 0, bestQuoteFires: 0 },
 })
 
@@ -78,7 +78,7 @@ export function buildPlayerStats({ profiles, owMatches, fnMatches, bounties, quo
     }
   }
 
-  // Sprites: total ticks + best season completion %.
+  // Sprites: total ticks + the season closest to complete (real counts, so it shows e.g. 38/42).
   const seasonTotals = {}
   const spriteSeason = {}
   for (const sp of sprites) {
@@ -95,8 +95,10 @@ export function buildPlayerStats({ profiles, owMatches, fnMatches, bounties, quo
   }
   for (const [key, n] of Object.entries(perUserSeason)) {
     const [uid, season] = key.split('|')
-    const pct = Math.floor((n / seasonTotals[season]) * 100)
-    get(uid).sprites.bestSeasonPct = Math.max(get(uid).sprites.bestSeasonPct, pct)
+    const total = seasonTotals[season]
+    const sp = get(uid).sprites
+    const better = !sp.bestTotal || n / total > sp.bestOwned / sp.bestTotal || (n / total === sp.bestOwned / sp.bestTotal && total > sp.bestTotal)
+    if (better) Object.assign(sp, { bestOwned: n, bestTotal: total })
   }
 
   // Squad
