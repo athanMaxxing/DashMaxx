@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
 import { useFortniteData } from '../../context/FortniteDataContext'
 import { fnPlayedTogether, pct } from '../../lib/fortnite'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import { PlayerName } from '../Avatar'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 import PlayerPicker from '../PlayerPicker'
 
 const COLUMNS = [
@@ -46,7 +47,7 @@ function Insight({ title, yesLabel, noLabel, data }) {
 export default function FnLeaderboard() {
   const { user } = useAuth()
   const myId = user.id
-  const { profiles } = useSquadData()
+  const { profiles, profileById } = useSquadData()
   const { filteredMatches, loading, error } = useFortniteData()
   const [together, setTogether] = useState([])
   const [sort, setSort] = useState({ key: 'wins', dir: 'desc' })
@@ -89,7 +90,7 @@ export default function FnLeaderboard() {
     setSort((cur) => (cur.key === key ? { key, dir: cur.dir === 'desc' ? 'asc' : 'desc' } : { key, dir: key === 'username' ? 'asc' : 'desc' }))
   const SortIcon = sort.dir === 'asc' ? ArrowUp : ArrowDown
   const th = (key, label, left) => (
-    <th className={`whitespace-nowrap px-2 py-1.5 font-medium ${left ? 'text-left' : 'text-right'}`}>
+    <th key={key} className={`whitespace-nowrap px-2 py-1.5 font-medium ${left ? 'text-left' : 'text-right'}`}>
       <button onClick={() => toggleSort(key)} className={`inline-flex items-center gap-0.5 hover:text-gray-200 ${sort.key === key ? 'text-indigo-300' : ''}`}>
         {label}
         {sort.key === key && <SortIcon className="h-3 w-3" />}
@@ -98,7 +99,7 @@ export default function FnLeaderboard() {
   )
 
   return (
-    <GadgetCard title="Fortnite Leaderboard" icon={Medal}>
+    <GadgetCard title="Leaderboard" icon={Medal}>
       <PlayerPicker
         profiles={profiles}
         selected={together}
@@ -118,7 +119,7 @@ export default function FnLeaderboard() {
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>
       ) : loading && rows.length === 0 ? (
-        <GadgetMessage>Loading…</GadgetMessage>
+        <GadgetSkeleton />
       ) : sorted.length === 0 ? (
         <GadgetMessage>No games yet.</GadgetMessage>
       ) : (
@@ -136,7 +137,7 @@ export default function FnLeaderboard() {
                 <tr key={r.id} className={`border-t border-gray-800/60 ${r.id === myId ? 'bg-indigo-500/5' : ''}`}>
                   <td className="px-1 py-1.5 text-gray-500">{i + 1}</td>
                   <td className={`max-w-[8rem] truncate px-2 py-1.5 font-medium ${r.id === myId ? 'text-indigo-300' : 'text-gray-200'}`}>
-                    {r.username}
+                    <PlayerName profile={profileById[r.id] ?? { username: r.username }} />
                   </td>
                   {COLUMNS.map((c) => (
                     <td

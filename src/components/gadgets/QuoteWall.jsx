@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Flame, Plus, Quote, Shuffle, Trash2, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { timeAgo } from '../../lib/time'
+import { useRealtime } from '../../lib/useRealtime'
+import { dailyIndex, timeAgo } from '../../lib/time'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 const SELECT = `
   id, body, said_by, said_by_name, context, created_by, created_at,
@@ -15,12 +16,6 @@ const SELECT = `
 
 const OTHER = '__other__'
 
-// Same "quote of the day" for everyone on a given day.
-function dailyIndex(len) {
-  const d = new Date()
-  const seed = d.getFullYear() * 1000 + d.getMonth() * 40 + d.getDate()
-  return seed % len
-}
 
 /** Squad quotes: post the best (worst) things people said, and fire the good ones. */
 export default function QuoteWall() {
@@ -43,6 +38,9 @@ export default function QuoteWall() {
   useEffect(() => {
     load()
   }, [load])
+
+  // Live: refetch when anyone changes this data.
+  useRealtime(['quotes', 'quote_likes'], load)
 
   const sorted = useMemo(
     () =>
@@ -140,7 +138,7 @@ export default function QuoteWall() {
       )}
 
       {loading ? (
-        <GadgetMessage>Loading quotes…</GadgetMessage>
+        <GadgetSkeleton />
       ) : quotes.length === 0 ? (
         <GadgetMessage>No quotes yet. Someone&apos;s bound to say something dumb tonight.</GadgetMessage>
       ) : (

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { FN_MATCH_SELECT, FN_MATCHES_CHANGED_EVENT } from '../lib/fortnite'
+import { useRealtime } from '../lib/useRealtime'
 
 /** Shared Fortnite matches + global Fortnite filters (mode / team size / fill / dropped together). */
 const FortniteDataContext = createContext(null)
@@ -13,8 +14,8 @@ export function FortniteDataProvider({ children }) {
   const [error, setError] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
 
-  const reload = useCallback(async () => {
-    setLoading(true)
+  const reload = useCallback(async (silent = false) => {
+    if (silent !== true) setLoading(true)
     setError('')
     const { data, error: err } = await supabase
       .from('fn_matches')
@@ -30,6 +31,8 @@ export function FortniteDataProvider({ children }) {
     window.addEventListener(FN_MATCHES_CHANGED_EVENT, reload)
     return () => window.removeEventListener(FN_MATCHES_CHANGED_EVENT, reload)
   }, [reload])
+
+  useRealtime(['fn_matches', 'fn_match_stats'], () => reload(true))
 
   const value = useMemo(() => {
     const modes = [...new Set(matches.map((m) => m.mode))].sort()

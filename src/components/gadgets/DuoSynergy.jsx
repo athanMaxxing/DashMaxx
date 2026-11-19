@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { HeartHandshake } from 'lucide-react'
 import { useSquadData } from '../../context/SquadDataContext'
 import { isWin } from '../../lib/overwatch'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 const MIN_GAME_OPTIONS = [1, 3, 5, 10]
 
@@ -60,7 +60,7 @@ export default function DuoSynergy() {
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>
       ) : loading && duos.length === 0 ? (
-        <GadgetMessage>Loading…</GadgetMessage>
+        <GadgetSkeleton />
       ) : shown.length === 0 ? (
         <GadgetMessage>
           {duos.length ? `No duos with ${minGames}+ games together.` : 'Log matches with 2+ players to see duos.'}

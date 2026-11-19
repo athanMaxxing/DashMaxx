@@ -57,9 +57,23 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(() => supabase.auth.signOut(), [])
 
+  /** Save changes to your own profile (username / avatar_emoji / avatar_color). */
+  const updateProfile = useCallback(
+    async (patch) => {
+      const { data, error } = await supabase.from('profiles').update(patch).eq('id', user.id).select('*').single()
+      if (error) {
+        if (error.code === '23505') throw new Error('That username is already taken.')
+        throw error
+      }
+      setProfile(data)
+      return data
+    },
+    [user],
+  )
+
   const username = profile?.username ?? user?.user_metadata?.username ?? user?.email ?? ''
 
-  const value = { session, user, profile, username, loading, signOut }
+  const value = { session, user, profile, username, loading, signOut, updateProfile }
 
   return (
     <AuthContext.Provider value={value}>

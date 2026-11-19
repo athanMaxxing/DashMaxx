@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Filter, Plus, RefreshCw, Swords, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Filter, Pencil, Plus, RefreshCw, Swords, Trash2, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
+import { useToast } from '../Toast'
 import PlayerPicker from '../PlayerPicker'
 import {
   DEFAULT_SEASON,
@@ -27,11 +28,27 @@ const emptyPlayer = (playerId = '') => ({
 })
 
 export default function OverwatchTracker() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
+  const toast = useToast()
   const { profiles, matches, filteredMatches, latestSeason, filtersActive, loading, error, reload } =
     useSquadData()
 
   const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState(null) // match being edited, or null for a new one
+  const canManage = (m) => m.created_by === user.id || Boolean(profile?.is_admin)
+
+  const closeForm = () => {
+    setShowForm(false)
+    setEditing(null)
+  }
+
+  async function removeMatch(m) {
+    if (!window.confirm(`Delete ${m.map} (${isWin(m.result) ? 'win' : 'loss'})? This can't be undone.`)) return
+    const { data, error: err } = await supabase.from('ow_matches').delete().eq('id', m.id).select('id')
+    if (err || !data?.length) return toast.error(err?.message ?? "You can't delete this match.")
+    toast.success('Match deleted')
+    window.dispatchEvent(new Event(MATCHES_CHANGED_EVENT))
+  }
   const [expandedId, setExpandedId] = useState(null)
   const [compFilter, setCompFilter] = useState([]) // profile ids that must ALL be present
 
@@ -44,14 +61,14 @@ export default function OverwatchTracker() {
 
   return (
     <GadgetCard
-      title="Overwatch Squad Tracker"
+      title="Match Tracker"
       icon={Swords}
       actions={
         <div className="flex gap-1">
           <button className="btn-ghost p-1.5" onClick={reload} title="Refresh" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button className="btn-primary py-1.5" onClick={() => setShowForm((v) => !v)}>
+          <button className="btn-primary py-1.5" onClick={() => (showForm ? closeForm() : setShowForm(true))}>
             {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             {showForm ? 'Close' : 'Log match'}
           </button>
@@ -60,12 +77,16 @@ export default function OverwatchTracker() {
     >
       {showForm && (
         <MatchForm
+          key={editing?.id ?? 'new'}
+          initial={editing}
           profiles={profiles}
           currentUserId={user.id}
           defaultSeason={latestSeason || DEFAULT_SEASON}
           lastQueue={matches[0]?.queue ?? 'competitive'}
+          onCancel={closeForm}
           onSaved={() => {
-            setShowForm(false)
+            toast.success(editing ? 'Match updated' : 'Match saved')
+            closeForm()
             window.dispatchEvent(new Event(MATCHES_CHANGED_EVENT))
           }}
         />
@@ -91,7 +112,7 @@ export default function OverwatchTracker() {
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>
       ) : loading && matches.length === 0 ? (
-        <GadgetMessage>Loading matches…</GadgetMessage>
+        <GadgetSkeleton />
       ) : shown.length === 0 ? (
         <GadgetMessage>
           {compFilter.length
@@ -108,6 +129,12 @@ export default function OverwatchTracker() {
               match={m}
               expanded={expandedId === m.id}
               onToggle={() => setExpandedId((cur) => (cur === m.id ? null : m.id))}
+              canManage={canManage(m)}
+              onEdit={() => {
+                setEditing(m)
+                setShowForm(true)
+              }}
+              onDelete={() => removeMatch(m)}
             />
           ))}
         </ul>
@@ -116,8 +143,7 @@ export default function OverwatchTracker() {
   )
 }
 
-
-function MatchRow({ match, expanded, onToggle }) {
+function MatchRow({ match, expanded, onToggle, canManage, onEdit, onDelete }) {
   const win = isWin(match.result)
   const Chevron = expanded ? ChevronDown : ChevronRight
   return (
@@ -174,25 +200,43 @@ function MatchRow({ match, expanded, onToggle }) {
               </tbody>
             </table>
           )}
+          {canManage && (
+            <div className="mt-2 flex justify-end gap-2 border-t border-white/[0.05] pt-2">
+              <button className="btn-ghost py-1 text-xs" onClick={onEdit}>
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </button>
+              <button className="btn-ghost py-1 text-xs hover:border-rose-400/40 hover:text-rose-300" onClick={onDelete}>
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </button>
+            </div>
+          )}
         </div>
       )}
     </li>
   )
 }
 
-function MatchForm({ profiles, currentUserId, defaultSeason, lastQueue, onSaved }) {
-  const [map, setMap] = useState('')
-  const [mode, setMode] = useState('')
-  const [season, setSeason] = useState(defaultSeason)
-  const [queue, setQueue] = useState(lastQueue)
-  const [result, setResult] = useState('win')
+function MatchForm({ initial, profiles, currentUserId, defaultSeason, lastQueue, onSaved, onCancel }) {
+  const [map, setMap] = useState(initial?.map ?? '')
+  const [mode, setMode] = useState(initial?.mode ?? '')
+  const [season, setSeason] = useState(initial?.season ?? defaultSeason)
+  const [queue, setQueue] = useState(initial?.queue ?? lastQueue)
+  const [result, setResult] = useState(initial ? (isWin(initial.result) ? 'win' : 'loss') : 'win')
 
   const handleMapChange = (value) => {
     setMap(value)
     const auto = modeForMap(value)
     if (auto) setMode(auto)
   }
-  const [players, setPlayers] = useState(() => [emptyPlayer(currentUserId)])
+  const [players, setPlayers] = useState(() =>
+    initial?.ow_match_stats?.length
+      ? initial.ow_match_stats.map((s) => ({
+          player_id: s.player_id,
+          hero: s.hero ?? '',
+          ...Object.fromEntries(STAT_FIELDS.map((f) => [f.key, s[f.key] ?? ''])),
+        }))
+      : [emptyPlayer(currentUserId)],
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -210,13 +254,19 @@ function MatchForm({ profiles, currentUserId, defaultSeason, lastQueue, onSaved 
 
     setSaving(true)
     try {
-      // 1) Insert the match and get its id back.
-      const { data: match, error: matchErr } = await supabase
-        .from('ow_matches')
-        .insert({ map: map.trim(), result, mode: mode || null, season: season.trim() || null, queue })
-        .select('id')
-        .single()
+      const fields = { map: map.trim(), result, mode: mode || null, season: season.trim() || null, queue }
+
+      // 1) Insert (or update) the match and get its id back.
+      const { data: match, error: matchErr } = initial
+        ? await supabase.from('ow_matches').update(fields).eq('id', initial.id).select('id').single()
+        : await supabase.from('ow_matches').insert(fields).select('id').single()
       if (matchErr) throw matchErr
+
+      // Editing: replace the old player rows with the new ones.
+      if (initial) {
+        const { error: delErr } = await supabase.from('ow_match_stats').delete().eq('match_id', match.id)
+        if (delErr) throw delErr
+      }
 
       // 2) Build one stats row per player with the returned match id (single batched insert).
       const statRows = validPlayers.map((p) => {
@@ -226,8 +276,8 @@ function MatchForm({ profiles, currentUserId, defaultSeason, lastQueue, onSaved 
       })
       const { error: statsErr } = await supabase.from('ow_match_stats').insert(statRows)
       if (statsErr) {
-        // Roll back the orphaned match so history stays consistent.
-        await supabase.from('ow_matches').delete().eq('id', match.id)
+        // New match: roll back the orphaned match so history stays consistent.
+        if (!initial) await supabase.from('ow_matches').delete().eq('id', match.id)
         throw statsErr
       }
       onSaved()
@@ -239,7 +289,8 @@ function MatchForm({ profiles, currentUserId, defaultSeason, lastQueue, onSaved 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4 space-y-3 rounded-lg border border-gray-800 bg-gray-950/60 p-3">
+    <form onSubmit={handleSubmit} className="mb-4 space-y-3 rounded-xl border border-white/[0.07] bg-gray-950/60 p-3">
+      {initial && <p className="text-xs font-semibold uppercase tracking-wide text-orange-300">Editing match</p>}
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <input
           className="input"
@@ -368,9 +419,16 @@ function MatchForm({ profiles, currentUserId, defaultSeason, lastQueue, onSaved 
         >
           <Plus className="h-4 w-4" /> Player
         </button>
-        <button type="submit" className="btn-primary" disabled={saving}>
-          {saving ? 'Saving…' : 'Save match'}
-        </button>
+        <div className="flex gap-2">
+          {initial && (
+            <button type="button" className="btn-ghost" onClick={onCancel}>
+              Cancel
+            </button>
+          )}
+          <button type="submit" className="btn-primary" disabled={saving}>
+            {saving ? 'Saving…' : initial ? 'Save changes' : 'Save match'}
+          </button>
+        </div>
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
     </form>

@@ -35,6 +35,15 @@ const DATASETS = [
     event: FN_MATCHES_CHANGED_EVENT,
   },
   {
+    table: 'events',
+    label: 'Events',
+    note: 'Also removes their RSVPs.',
+    select: 'id, title, starts_at, created_at',
+    pk: ['id'],
+    describe: (r) => `${r.title} · ${new Date(r.starts_at).toLocaleString()}`,
+    when: (r) => r.created_at,
+  },
+  {
     table: 'squad_bounties',
     label: 'Bounties',
     select: 'id, game, description, created_at',

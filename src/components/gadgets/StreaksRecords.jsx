@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Award, TrendingDown, TrendingUp } from 'lucide-react'
 import { useSquadData } from '../../context/SquadDataContext'
 import { IMPACT_HELP, impactScore, isWin, STAT_FIELDS } from '../../lib/overwatch'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 const RECORD_FIELDS = [
   ...STAT_FIELDS.filter((f) => f.key !== 'deaths').map((f) => ({
@@ -57,7 +57,7 @@ export default function StreaksRecords() {
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>
       ) : loading && !data ? (
-        <GadgetMessage>Loading…</GadgetMessage>
+        <GadgetSkeleton />
       ) : !data ? (
         <GadgetMessage>No matches yet — records start with your first game.</GadgetMessage>
       ) : (

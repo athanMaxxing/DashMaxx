@@ -3,7 +3,8 @@ import { ArrowDown, ArrowUp, Trophy, RefreshCw, Users } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
 import { isWin, playedTogether, STAT_FIELDS } from '../../lib/overwatch'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import { PlayerName } from '../Avatar'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 import PlayerPicker from '../PlayerPicker'
 
 // Columns where a lower number is better.
@@ -73,7 +74,7 @@ function buildLeaderboard(matches, playerIds) {
 
 export default function SquadLeaderboard() {
   const { user } = useAuth()
-  const { profiles, filteredMatches: matches, loading, error, reload: load } = useSquadData()
+  const { profiles, profileById, filteredMatches: matches, loading, error, reload: load } = useSquadData()
   const [together, setTogether] = useState([]) // profile ids that must ALL be in the match
   const [sort, setSort] = useState({ key: 'winRate', dir: 'desc' })
 
@@ -118,7 +119,7 @@ export default function SquadLeaderboard() {
 
   const SortIcon = sort.dir === 'asc' ? ArrowUp : ArrowDown
   const header = (key, label, align = 'right') => (
-    <th className={`whitespace-nowrap px-2 py-1.5 font-medium ${align === 'left' ? 'text-left' : 'text-right'}`}>
+    <th key={key} className={`whitespace-nowrap px-2 py-1.5 font-medium ${align === 'left' ? 'text-left' : 'text-right'}`}>
       <button
         onClick={() => toggleSort(key)}
         className={`inline-flex items-center gap-0.5 hover:text-gray-200 ${
@@ -157,7 +158,7 @@ export default function SquadLeaderboard() {
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>
       ) : loading && matches.length === 0 ? (
-        <GadgetMessage>Crunching numbers…</GadgetMessage>
+        <GadgetSkeleton />
       ) : sorted.length === 0 ? (
         <GadgetMessage>
           {together.length ? 'That squad hasn’t played a logged match together yet.' : 'No matches logged yet.'}
@@ -185,7 +186,7 @@ export default function SquadLeaderboard() {
                       r.id === user.id ? 'text-indigo-300' : 'text-gray-200'
                     }`}
                   >
-                    {r.username}
+                    <PlayerName profile={profileById[r.id] ?? { username: r.username }} />
                   </td>
                   {COLUMNS.map((c) => {
                     const isBest = c.key !== 'games' && best[c.key] != null && r[c.key] === best[c.key]

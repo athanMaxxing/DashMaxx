@@ -1,41 +1,50 @@
 import { useMemo, useState } from 'react'
-import { Crosshair, Filter, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { Crosshair, Filter, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
 import { useFortniteData } from '../../context/FortniteDataContext'
 import { FN_MATCHES_CHANGED_EVENT, FN_MODES, fnPlayedTogether, pct, TEAM_SIZES, teamSizeLabel, totalKills } from '../../lib/fortnite'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
+import { useToast } from '../Toast'
 import PlayerPicker from '../PlayerPicker'
 
 /** Log Fortnite games (win, mode, fill, dropped together, kills per player) and browse history. */
 export default function FnMatchTracker() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
+  const toast = useToast()
   const { profiles } = useSquadData()
   const { matches, filteredMatches, lastMode, filtersActive, loading, error, reload } = useFortniteData()
   const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const canManage = (m) => m.created_by === user.id || Boolean(profile?.is_admin)
+  const closeForm = () => {
+    setShowForm(false)
+    setEditing(null)
+  }
   const [together, setTogether] = useState([])
 
   const shown = useMemo(() => fnPlayedTogether(filteredMatches, together), [filteredMatches, together])
   const wins = shown.filter((m) => m.won).length
 
   async function remove(match) {
-    if (!window.confirm('Delete this match?')) return
-    const { error: err } = await supabase.from('fn_matches').delete().eq('id', match.id)
-    if (err) window.alert(err.message)
-    else window.dispatchEvent(new Event(FN_MATCHES_CHANGED_EVENT))
+    if (!window.confirm(`Delete this ${match.won ? 'win' : 'loss'} (${match.mode})? This can't be undone.`)) return
+    const { data, error: err } = await supabase.from('fn_matches').delete().eq('id', match.id).select('id')
+    if (err || !data?.length) return toast.error(err?.message ?? "You can't delete this game.")
+    toast.success('Game deleted')
+    window.dispatchEvent(new Event(FN_MATCHES_CHANGED_EVENT))
   }
 
   return (
     <GadgetCard
-      title="Fortnite Match Tracker"
+      title="Match Tracker"
       icon={Crosshair}
       actions={
         <div className="flex gap-1">
           <button className="btn-ghost p-1.5" onClick={reload} title="Refresh" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button className="btn-primary py-1.5" onClick={() => setShowForm((v) => !v)}>
+          <button className="btn-primary py-1.5" onClick={() => (showForm ? closeForm() : setShowForm(true))}>
             {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             {showForm ? 'Close' : 'Log game'}
           </button>
@@ -44,12 +53,16 @@ export default function FnMatchTracker() {
     >
       {showForm && (
         <FnMatchForm
+          key={editing?.id ?? 'new'}
+          initial={editing}
           profiles={profiles}
           currentUserId={user.id}
           defaultMode={lastMode || 'Build'}
           defaultTeamSize={matches[0]?.team_size ?? 4}
+          onCancel={closeForm}
           onSaved={() => {
-            setShowForm(false)
+            toast.success(editing ? 'Game updated' : 'Game saved')
+            closeForm()
             window.dispatchEvent(new Event(FN_MATCHES_CHANGED_EVENT))
           }}
         />
@@ -67,7 +80,7 @@ export default function FnMatchTracker() {
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>
       ) : loading && matches.length === 0 ? (
-        <GadgetMessage>Loading games…</GadgetMessage>
+        <GadgetSkeleton />
       ) : shown.length === 0 ? (
         <GadgetMessage>
           {together.length ? 'No games with that squad together.' : filtersActive ? 'No games for these filters.' : 'No games logged yet.'}
@@ -93,13 +106,27 @@ export default function FnMatchTracker() {
                 <span className="shrink-0 text-xs text-gray-500">
                   {totalKills(m)} kills · {new Date(m.created_at).toLocaleDateString()}
                 </span>
-                <button
-                  className="p-0.5 text-gray-600 opacity-0 transition hover:text-red-400 focus:opacity-100 group-hover:opacity-100"
-                  onClick={() => remove(m)}
-                  title="Delete (only works on games you logged)"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                {canManage(m) && (
+                  <span className="flex shrink-0 gap-0.5 opacity-100 transition sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
+                    <button
+                      className="rounded p-1 text-gray-500 hover:bg-white/5 hover:text-gray-200"
+                      onClick={() => {
+                        setEditing(m)
+                        setShowForm(true)
+                      }}
+                      title="Edit game"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      className="rounded p-1 text-gray-500 hover:bg-rose-500/10 hover:text-rose-400"
+                      onClick={() => remove(m)}
+                      title="Delete game"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                )}
               </div>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 pl-14 text-xs text-gray-400">
                 {[...m.fn_match_stats]
@@ -133,13 +160,17 @@ function Toggle({ label, checked, onChange, disabled = false }) {
   )
 }
 
-function FnMatchForm({ profiles, currentUserId, defaultMode, defaultTeamSize, onSaved }) {
-  const [won, setWon] = useState(false)
-  const [mode, setMode] = useState(defaultMode)
-  const [teamSize, setTeamSize] = useState(defaultTeamSize)
-  const [fill, setFill] = useState(false)
-  const [dropped, setDropped] = useState(true)
-  const [players, setPlayers] = useState(() => [{ player_id: currentUserId, kills: '' }])
+function FnMatchForm({ initial, profiles, currentUserId, defaultMode, defaultTeamSize, onSaved, onCancel }) {
+  const [won, setWon] = useState(initial?.won ?? false)
+  const [mode, setMode] = useState(initial?.mode ?? defaultMode)
+  const [teamSize, setTeamSize] = useState(initial?.team_size ?? defaultTeamSize)
+  const [fill, setFill] = useState(initial?.fill ?? false)
+  const [dropped, setDropped] = useState(initial?.dropped_together ?? true)
+  const [players, setPlayers] = useState(() =>
+    initial?.fn_match_stats?.length
+      ? initial.fn_match_stats.map((s) => ({ player_id: s.player_id, kills: String(s.kills ?? '') }))
+      : [{ player_id: currentUserId, kills: '' }],
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -162,16 +193,20 @@ function FnMatchForm({ profiles, currentUserId, defaultMode, defaultTeamSize, on
       return setError(`${sizeLabel} allows ${teamSize} player${teamSize === 1 ? '' : 's'} — remove ${valid.length - teamSize} or pick a bigger team size.`)
     setSaving(true)
     try {
-      const { data: match, error: mErr } = await supabase
-        .from('fn_matches')
-        .insert({ won, mode: mode.trim(), fill: canFill && fill, dropped_together: dropped, team_size: teamSize })
-        .select('id')
-        .single()
+      const fields = { won, mode: mode.trim(), fill: canFill && fill, dropped_together: dropped, team_size: teamSize }
+      const { data: match, error: mErr } = initial
+        ? await supabase.from('fn_matches').update(fields).eq('id', initial.id).select('id').single()
+        : await supabase.from('fn_matches').insert(fields).select('id').single()
       if (mErr) throw mErr
+      // Editing: replace the old player rows (the team-size check counts existing rows).
+      if (initial) {
+        const { error: delErr } = await supabase.from('fn_match_stats').delete().eq('match_id', match.id)
+        if (delErr) throw delErr
+      }
       const rows = valid.map((p) => ({ match_id: match.id, player_id: p.player_id, kills: Number(p.kills) || 0 }))
       const { error: sErr } = await supabase.from('fn_match_stats').insert(rows)
       if (sErr) {
-        await supabase.from('fn_matches').delete().eq('id', match.id)
+        if (!initial) await supabase.from('fn_matches').delete().eq('id', match.id)
         throw sErr
       }
       onSaved()
@@ -183,7 +218,8 @@ function FnMatchForm({ profiles, currentUserId, defaultMode, defaultTeamSize, on
   }
 
   return (
-    <form onSubmit={submit} className="mb-4 space-y-3 rounded-lg border border-gray-800 bg-gray-950/60 p-3">
+    <form onSubmit={submit} className="mb-4 space-y-3 rounded-xl border border-white/[0.07] bg-gray-950/60 p-3">
+      {initial && <p className="text-xs font-semibold uppercase tracking-wide text-violet-300">Editing game</p>}
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <input className="input" list="fn-modes" placeholder="Mode" value={mode} onChange={(e) => setMode(e.target.value)} required />
         <datalist id="fn-modes">
@@ -275,9 +311,16 @@ function FnMatchForm({ profiles, currentUserId, defaultMode, defaultTeamSize, on
         >
           <Plus className="h-4 w-4" /> Player
         </button>
-        <button type="submit" className="btn-primary" disabled={saving || tooMany}>
-          {saving ? 'Saving…' : 'Save game'}
-        </button>
+        <div className="flex gap-2">
+          {initial && (
+            <button type="button" className="btn-ghost" onClick={onCancel}>
+              Cancel
+            </button>
+          )}
+          <button type="submit" className="btn-primary" disabled={saving || tooMany}>
+            {saving ? 'Saving…' : initial ? 'Save changes' : 'Save game'}
+          </button>
+        </div>
       </div>
       {tooMany && (
         <p className="text-sm text-rose-400">

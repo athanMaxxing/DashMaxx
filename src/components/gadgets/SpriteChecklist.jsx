@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Plus, Sparkles, Target, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useRealtime } from '../../lib/useRealtime'
 import { BOUNTIES_CHANGED_EVENT } from '../../lib/time'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 const RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic']
 const RARITY_STYLE = {
@@ -47,6 +48,9 @@ export default function SpriteChecklist() {
   useEffect(() => {
     load()
   }, [load])
+
+  // Live: refetch when anyone changes this data.
+  useRealtime(['fortnite_sprites', 'sprite_collection'], load)
 
   // Seasons, newest-added first; default to the newest.
   const seasons = useMemo(() => {
@@ -192,7 +196,7 @@ export default function SpriteChecklist() {
       {notice && <p className="mb-2 text-sm text-green-400">{notice}</p>}
 
       {loading ? (
-        <GadgetMessage>Loading sprites…</GadgetMessage>
+        <GadgetSkeleton />
       ) : seasonSprites.length === 0 ? (
         <GadgetMessage>No sprites yet. Add the current season&apos;s sprites.</GadgetMessage>
       ) : (

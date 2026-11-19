@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Flag, Minus, Plus, Trash2, Trophy } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useRealtime } from '../../lib/useRealtime'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 /** Shared squad targets with progress bars anyone can bump. */
 export default function SquadGoals() {
@@ -28,6 +29,9 @@ export default function SquadGoals() {
   useEffect(() => {
     load()
   }, [load])
+
+  // Live: refetch when anyone changes this data.
+  useRealtime(['squad_goals'], load)
 
   async function addGoal(e) {
     e.preventDefault()
@@ -98,7 +102,7 @@ export default function SquadGoals() {
       {error && <p className="mb-2 text-sm text-red-400">{error}</p>}
 
       {loading ? (
-        <GadgetMessage>Loading…</GadgetMessage>
+        <GadgetSkeleton />
       ) : sorted.length === 0 ? (
         <GadgetMessage>No goals yet. Set one for the squad.</GadgetMessage>
       ) : (

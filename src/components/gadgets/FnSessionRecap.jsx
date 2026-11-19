@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Check, ChevronLeft, ChevronRight, ClipboardCopy, Crown, Newspaper } from 'lucide-react'
 import { useFortniteData } from '../../context/FortniteDataContext'
 import { pct, totalKills } from '../../lib/fortnite'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 /** One night of Fortnite: wins, kills and the top fragger. */
 export default function FnSessionRecap() {
@@ -65,7 +65,7 @@ export default function FnSessionRecap() {
 
   return (
     <GadgetCard
-      title="Fortnite Session Recap"
+      title="Session Recap"
       icon={Newspaper}
       actions={
         sessions.length > 0 && (
@@ -86,7 +86,7 @@ export default function FnSessionRecap() {
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>
       ) : loading && sessions.length === 0 ? (
-        <GadgetMessage>Loading…</GadgetMessage>
+        <GadgetSkeleton />
       ) : !current || !recap ? (
         <GadgetMessage>No sessions yet.</GadgetMessage>
       ) : (

@@ -3,7 +3,7 @@ import { Flame, Users2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
 import { IMPACT_HELP, impactScore, isWin } from '../../lib/overwatch'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 const TOP_N = 4
 const HOT_WINDOW = 5 // last N games
@@ -54,7 +54,7 @@ export default function HeroPool() {
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>
       ) : loading && players.length === 0 ? (
-        <GadgetMessage>Loading…</GadgetMessage>
+        <GadgetSkeleton />
       ) : players.length === 0 ? (
         <GadgetMessage>Log some matches with heroes to fill this in.</GadgetMessage>
       ) : (

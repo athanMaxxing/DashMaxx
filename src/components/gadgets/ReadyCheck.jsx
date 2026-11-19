@@ -4,7 +4,8 @@ import { supabase } from '../../lib/supabase'
 import { timeAgo } from '../../lib/time'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import Avatar from '../Avatar'
+import GadgetCard, { GadgetSkeleton } from '../GadgetCard'
 
 const STATUSES = [
   { value: 'online', label: 'On now', dot: 'bg-green-500', btn: 'bg-green-600 text-white' },
@@ -117,7 +118,7 @@ export default function ReadyCheck() {
       {error && <p className="mb-2 text-sm text-red-400">{error}</p>}
 
       {loading && rows.length === 0 ? (
-        <GadgetMessage>Loading…</GadgetMessage>
+        <GadgetSkeleton />
       ) : (
         <ul className="space-y-1">
           {rows.map((r) => {
@@ -126,7 +127,7 @@ export default function ReadyCheck() {
               <li key={r.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-800/40">
                 <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${st ? st.dot : 'bg-gray-700'}`} />
                 <span className={`min-w-0 truncate text-sm ${r.id === user.id ? 'font-semibold text-indigo-300' : 'text-gray-200'}`}>
-                  {r.username}
+                  <span className="inline-flex items-center gap-1.5"><Avatar profile={r} size="xs" />{r.username}</span>
                 </span>
                 <span className="min-w-0 flex-1 truncate text-xs text-gray-400">
                   {st ? st.label : 'No status'}

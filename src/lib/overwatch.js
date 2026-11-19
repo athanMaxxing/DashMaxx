@@ -26,7 +26,7 @@ export const OW_HEROES = [
 ]
 
 export const MATCH_SELECT = `
-  id, map, result, season, mode, queue, created_at,
+  id, map, result, season, mode, queue, created_by, created_at,
   ow_match_stats (
     id, player_id, hero, ${STAT_FIELDS.map((f) => f.key).join(', ')},
     profiles ( id, username )

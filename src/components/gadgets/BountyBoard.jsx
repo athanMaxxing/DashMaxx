@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Crosshair, Plus, RefreshCw, Target } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useRealtime } from '../../lib/useRealtime'
 import { BOUNTIES_CHANGED_EVENT } from '../../lib/time'
 import { useAuth } from '../../context/AuthContext'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 /*
  * Assumed schema (edit here if your columns differ):
@@ -43,6 +44,9 @@ export default function BountyBoard() {
     window.addEventListener(BOUNTIES_CHANGED_EVENT, load)
     return () => window.removeEventListener(BOUNTIES_CHANGED_EVENT, load)
   }, [load])
+
+  // Live: refetch when anyone changes this data.
+  useRealtime(['squad_bounties'], load)
 
   const { open, claimed } = useMemo(
     () => ({
@@ -126,7 +130,7 @@ export default function BountyBoard() {
       {error && <p className="mb-2 text-sm text-red-400">{error}</p>}
 
       {loading && bounties.length === 0 ? (
-        <GadgetMessage>Loading bounties…</GadgetMessage>
+        <GadgetSkeleton />
       ) : bounties.length === 0 ? (
         <GadgetMessage>No bounties yet. Post the first one.</GadgetMessage>
       ) : (

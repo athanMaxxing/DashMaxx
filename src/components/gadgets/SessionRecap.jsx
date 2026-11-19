@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Check, ChevronLeft, ChevronRight, ClipboardCopy, Crown, Newspaper } from 'lucide-react'
 import { useSquadData } from '../../context/SquadDataContext'
 import { IMPACT_HELP, impactScore, isWin } from '../../lib/overwatch'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 const dayKey = (iso) => new Date(iso).toDateString()
 
@@ -104,7 +104,7 @@ export default function SessionRecap() {
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>
       ) : loading && sessions.length === 0 ? (
-        <GadgetMessage>Loading…</GadgetMessage>
+        <GadgetSkeleton />
       ) : !current || !recap ? (
         <GadgetMessage>No sessions yet.</GadgetMessage>
       ) : (

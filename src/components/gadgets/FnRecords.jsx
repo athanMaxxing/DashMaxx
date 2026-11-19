@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Award, TrendingDown, TrendingUp } from 'lucide-react'
 import { useFortniteData } from '../../context/FortniteDataContext'
 import { totalKills } from '../../lib/fortnite'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 /** Streaks and single-game / single-night records for Fortnite. */
 export default function FnRecords() {
@@ -68,11 +68,11 @@ export default function FnRecords() {
     : []
 
   return (
-    <GadgetCard title="Fortnite Records" icon={Award}>
+    <GadgetCard title="Records" icon={Award}>
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>
       ) : loading && !data ? (
-        <GadgetMessage>Loading…</GadgetMessage>
+        <GadgetSkeleton />
       ) : !data ? (
         <GadgetMessage>No games yet.</GadgetMessage>
       ) : (

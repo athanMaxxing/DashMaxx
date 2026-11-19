@@ -1,41 +1,69 @@
-import { useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Crosshair, Gamepad, LayoutDashboard, LayoutGrid, Settings2, ShieldCheck, Swords, Users } from 'lucide-react'
+import { Crosshair, Gamepad, Home, LayoutGrid, Settings2, ShieldCheck, Swords, Users } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { SquadDataProvider } from '../context/SquadDataContext'
 import { FortniteDataProvider } from '../context/FortniteDataContext'
 import { useGadgetPrefs } from '../lib/useGadgetPrefs'
-import { AccentContext, ACCENTS } from '../components/GadgetCard'
+import { AccentContext, ACCENTS, CardSkeleton } from '../components/GadgetCard'
 import GadgetCustomizer from '../components/GadgetCustomizer'
 import OwFilterBar from '../components/OwFilterBar'
 import FnFilterBar from '../components/FnFilterBar'
-import AdminPanel from './AdminPanel'
-import BountyBoard from '../components/gadgets/BountyBoard'
-import DuoSynergy from '../components/gadgets/DuoSynergy'
-import FnLeaderboard from '../components/gadgets/FnLeaderboard'
-import FnMatchTracker from '../components/gadgets/FnMatchTracker'
-import FnRecords from '../components/gadgets/FnRecords'
-import FnSessionRecap from '../components/gadgets/FnSessionRecap'
-import HeroPool from '../components/gadgets/HeroPool'
-import OverwatchTracker from '../components/gadgets/OverwatchTracker'
-import QuoteWall from '../components/gadgets/QuoteWall'
-import ReadyCheck from '../components/gadgets/ReadyCheck'
-import ScheduleMatrix from '../components/gadgets/ScheduleMatrix'
-import SessionRecap from '../components/gadgets/SessionRecap'
-import Shoutbox from '../components/gadgets/Shoutbox'
-import SpriteChecklist from '../components/gadgets/SpriteChecklist'
-import SquadGoals from '../components/gadgets/SquadGoals'
-import SquadLeaderboard from '../components/gadgets/SquadLeaderboard'
-import StreaksRecords from '../components/gadgets/StreaksRecords'
+
+/*
+ * Every gadget is loaded on demand (its own JS chunk), so the first screen
+ * downloads only what's visible.
+ */
+const g = (load, name = 'default') => lazy(() => load().then((m) => ({ default: m[name] })))
+
+const AdminPanel = g(() => import('./AdminPanel'))
+const EventCountdown = g(() => import('../components/gadgets/EventCountdown'))
+const HomeTonight = g(() => import('../components/gadgets/HomeCards'), 'HomeTonight')
+const HomeLastSessions = g(() => import('../components/gadgets/HomeCards'), 'HomeLastSessions')
+const HomeQuote = g(() => import('../components/gadgets/HomeCards'), 'HomeQuote')
+const HomeTodo = g(() => import('../components/gadgets/HomeCards'), 'HomeTodo')
+const ReadyCheck = g(() => import('../components/gadgets/ReadyCheck'))
+const ScheduleMatrix = g(() => import('../components/gadgets/ScheduleMatrix'))
+const Shoutbox = g(() => import('../components/gadgets/Shoutbox'))
+const OverwatchTracker = g(() => import('../components/gadgets/OverwatchTracker'))
+const SquadLeaderboard = g(() => import('../components/gadgets/SquadLeaderboard'))
+const SessionRecap = g(() => import('../components/gadgets/SessionRecap'))
+const HeroPool = g(() => import('../components/gadgets/HeroPool'))
+const StreaksRecords = g(() => import('../components/gadgets/StreaksRecords'))
+const DuoSynergy = g(() => import('../components/gadgets/DuoSynergy'))
+const FnMatchTracker = g(() => import('../components/gadgets/FnMatchTracker'))
+const FnLeaderboard = g(() => import('../components/gadgets/FnLeaderboard'))
+const FnSessionRecap = g(() => import('../components/gadgets/FnSessionRecap'))
+const FnRecords = g(() => import('../components/gadgets/FnRecords'))
+const SpriteChecklist = g(() => import('../components/gadgets/SpriteChecklist'))
+const QuoteWall = g(() => import('../components/gadgets/QuoteWall'))
+const BountyBoard = g(() => import('../components/gadgets/BountyBoard'))
+const SquadGoals = g(() => import('../components/gadgets/SquadGoals'))
+const Achievements = g(() => import('../components/gadgets/Achievements'))
 
 // 1 column on mobile, 2 on large, 3 on extra-large.
-const GRID = 'grid grid-cols-1 items-start gap-5 lg:grid-cols-2 xl:grid-cols-3'
+const GRID = 'grid grid-cols-1 items-start gap-4 sm:gap-5 lg:grid-cols-2 xl:grid-cols-3'
+const FULL = 'lg:col-span-2 xl:col-span-3'
 
 /*
  * Gadget registry. `id`s are what get saved in each user's hidden list,
  * so don't rename them once people have customised their board.
  */
 const SECTIONS = [
+  {
+    id: 'home',
+    title: 'Home',
+    subtitle: 'What’s happening in the squad',
+    icon: Home,
+    accent: 'indigo',
+    gadgets: [
+      { id: 'event', title: 'Event Countdown', Component: EventCountdown, span: FULL },
+      { id: 'home-tonight', title: 'Tonight', Component: HomeTonight },
+      { id: 'home-last', title: 'Last sessions', Component: HomeLastSessions },
+      { id: 'home-quote', title: 'Quote of the day', Component: HomeQuote },
+      { id: 'home-todo', title: 'Up for grabs', Component: HomeTodo, span: 'xl:col-span-3 lg:col-span-2' },
+    ],
+  },
   {
     id: 'squad',
     title: 'Squad',
@@ -51,7 +79,6 @@ const SECTIONS = [
   {
     id: 'overwatch',
     title: 'Overwatch',
-    short: 'OW',
     subtitle: 'Matches, heroes, duos and records',
     icon: Swords,
     accent: 'orange',
@@ -68,7 +95,6 @@ const SECTIONS = [
   {
     id: 'fortnite',
     title: 'Fortnite',
-    short: 'FN',
     subtitle: 'Victory Royales, kills and sprites',
     icon: Crosshair,
     accent: 'violet',
@@ -84,13 +110,14 @@ const SECTIONS = [
   {
     id: 'boards',
     title: 'Boards',
-    subtitle: 'Bounties, goals and the hall of quotes',
+    subtitle: 'Bounties, goals, quotes and bragging rights',
     icon: Gamepad,
     accent: 'amber',
     gadgets: [
       { id: 'quotes', title: 'Quote Wall', Component: QuoteWall, span: 'lg:col-span-2' },
       { id: 'bounties', title: 'Bounty Board', Component: BountyBoard },
       { id: 'goals', title: 'Squad Goals', Component: SquadGoals },
+      { id: 'achievements', title: 'Achievements', Component: Achievements, span: 'lg:col-span-2' },
     ],
   },
 ]
@@ -99,7 +126,7 @@ function SectionHeader({ section }) {
   const accent = ACCENTS[section.accent]
   const Icon = section.icon
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
       <div className="flex items-center gap-3">
         <span className={`flex h-10 w-10 items-center justify-center rounded-xl ring-1 ${accent.chip}`}>
           <Icon className="h-5 w-5" />
@@ -124,7 +151,9 @@ function Section({ section, gadgets }) {
         <div className={GRID}>
           {gadgets.map(({ id, Component, span }) => (
             <div key={id} className={`min-w-0 ${span ?? ''}`}>
-              <Component />
+              <Suspense fallback={<CardSkeleton />}>
+                <Component />
+              </Suspense>
             </div>
           ))}
         </div>
@@ -140,35 +169,43 @@ export default function Dashboard() {
   const [customizing, setCustomizing] = useState(false)
   const [params, setParams] = useSearchParams()
 
-  const sections = SECTIONS.map((s) => ({ ...s, shown: s.gadgets.filter((g) => isVisible(g.id)) })).filter(
+  const sections = SECTIONS.map((s) => ({ ...s, shown: s.gadgets.filter((x) => isVisible(x.id)) })).filter(
     (s) => s.shown.length > 0,
   )
 
   const tabs = [
-    { id: 'all', title: 'Overview', icon: LayoutDashboard, accent: 'indigo' },
     ...sections.map((s) => ({ id: s.id, title: s.title, icon: s.icon, accent: s.accent })),
     ...(isAdmin ? [{ id: 'admin', title: 'Admin', icon: ShieldCheck, accent: 'rose' }] : []),
   ]
-  const requested = params.get('tab') ?? 'all'
-  const active = tabs.some((t) => t.id === requested) ? requested : 'all'
-  const setTab = (id) => setParams(id === 'all' ? {} : { tab: id }, { replace: true })
+  const requested = params.get('tab') ?? tabs[0]?.id
+  const active = tabs.some((t) => t.id === requested) ? requested : tabs[0]?.id
+  const setTab = (id) => {
+    setParams(id === tabs[0]?.id ? {} : { tab: id }, { replace: true })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
-  const showing = active === 'all' ? sections : sections.filter((s) => s.id === active)
+  const section = sections.find((s) => s.id === active)
+
+  // On phones the tab bar scrolls sideways: keep the active tab visible.
+  useEffect(() => {
+    document.querySelector(`[data-tab="${active}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [active])
 
   return (
     <SquadDataProvider>
       <FortniteDataProvider>
         <div className="space-y-6">
           {/* Tab bar */}
-          <div className="sticky top-16 z-10 -mx-4 border-b border-white/[0.06] bg-gray-950/70 px-4 py-2 backdrop-blur-xl">
+          <div className="sticky top-16 z-10 -mx-3 border-b border-white/[0.06] bg-gray-950/70 px-3 py-2 backdrop-blur-xl sm:-mx-4 sm:px-4">
             <div className="flex items-center gap-2">
-              <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+              <nav className="-my-1 flex min-w-0 flex-1 gap-1 overflow-x-auto py-1 [scrollbar-width:none]">
                 {tabs.map((t) => {
                   const Icon = t.icon
                   const on = t.id === active
                   return (
                     <button
                       key={t.id}
+                      data-tab={t.id}
                       onClick={() => setTab(t.id)}
                       className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                         on ? `ring-1 ${ACCENTS[t.accent].tab}` : 'text-gray-400 hover:bg-white/[0.04] hover:text-gray-200'
@@ -181,8 +218,9 @@ export default function Dashboard() {
                 })}
               </nav>
               <button
-                className={`btn-ghost shrink-0 py-1.5 text-xs ${customizing ? 'border-indigo-400/50 text-indigo-200' : ''}`}
+                className={`btn-ghost shrink-0 px-2 py-1.5 text-xs sm:px-3 ${customizing ? 'border-indigo-400/50 text-indigo-200' : ''}`}
                 onClick={() => setCustomizing((v) => !v)}
+                title="Choose your gadgets"
               >
                 <Settings2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Customize</span>
@@ -203,25 +241,23 @@ export default function Dashboard() {
 
           {active === 'admin' ? (
             <AccentContext.Provider value="rose">
-              <AdminPanel />
+              <Suspense fallback={<CardSkeleton />}>
+                <AdminPanel />
+              </Suspense>
             </AccentContext.Provider>
-          ) : showing.length === 0 ? (
+          ) : !section ? (
             <div className="flex flex-col items-center gap-3 py-20 text-center text-gray-500">
               <LayoutGrid className="h-10 w-10" />
               <p>All gadgets are hidden.</p>
               <button
                 className="btn-primary"
-                onClick={() => setVisible(SECTIONS.flatMap((s) => s.gadgets.map((g) => g.id)), true)}
+                onClick={() => setVisible(SECTIONS.flatMap((s) => s.gadgets.map((x) => x.id)), true)}
               >
                 Show everything
               </button>
             </div>
           ) : (
-            <div className="space-y-12">
-              {showing.map((s) => (
-                <Section key={s.id} section={s} gadgets={s.shown} />
-              ))}
-            </div>
+            <Section key={section.id} section={section} gadgets={section.shown} />
           )}
         </div>
       </FortniteDataProvider>

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarDays, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useRealtime } from '../../lib/useRealtime'
 import { useAuth } from '../../context/AuthContext'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 /*
  * Assumed schema (edit here if your columns differ):
@@ -71,6 +72,9 @@ export default function ScheduleMatrix() {
     load()
   }, [load])
 
+  // Live: refetch when anyone changes this data.
+  useRealtime(['squad_schedule', 'profiles'], load)
+
   // Rows: current user first, then everyone else alphabetically.
   const rows = useMemo(() => {
     const byId = new Map(profiles.map((p) => [p.id, p.username]))
@@ -114,7 +118,7 @@ export default function ScheduleMatrix() {
     >
       {error && <p className="mb-2 text-sm text-red-400">{error}</p>}
       {loading && rows.length === 0 ? (
-        <GadgetMessage>Loading schedule…</GadgetMessage>
+        <GadgetSkeleton />
       ) : rows.length === 0 ? (
         <GadgetMessage>No squad members yet.</GadgetMessage>
       ) : (

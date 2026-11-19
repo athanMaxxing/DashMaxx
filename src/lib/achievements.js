@@ -1,0 +1,121 @@
+import { isWin } from './overwatch'
+
+/*
+ * Achievements are computed from existing data — nothing extra is stored.
+ * Each one has `progress(stats)` returning [current, target]; unlocked when current >= target.
+ */
+export const ACHIEVEMENTS = [
+  // Overwatch
+  { id: 'ow-first-win', group: 'Overwatch', emoji: '🏅', title: 'First Blood', desc: 'Win an Overwatch match', progress: (s) => [s.ow.wins, 1] },
+  { id: 'ow-streak-3', group: 'Overwatch', emoji: '🔥', title: 'Heating Up', desc: 'Win 3 Overwatch matches in a row', progress: (s) => [s.ow.bestStreak, 3] },
+  { id: 'ow-streak-5', group: 'Overwatch', emoji: '☄️', title: 'Unstoppable', desc: 'Win 5 Overwatch matches in a row', progress: (s) => [s.ow.bestStreak, 5] },
+  { id: 'ow-veteran', group: 'Overwatch', emoji: '🎖️', title: 'Veteran', desc: 'Play 50 Overwatch matches', progress: (s) => [s.ow.games, 50] },
+  { id: 'ow-elims', group: 'Overwatch', emoji: '💥', title: 'Fragger', desc: '30+ eliminations in one match', progress: (s) => [s.ow.maxElims, 30] },
+  { id: 'ow-damage', group: 'Overwatch', emoji: '🗡️', title: 'Big Numbers', desc: '15,000 damage in one match', progress: (s) => [s.ow.maxDamage, 15000] },
+  { id: 'ow-healing', group: 'Overwatch', emoji: '💚', title: 'Guardian Angel', desc: '12,000 healing in one match', progress: (s) => [s.ow.maxHealing, 12000] },
+  { id: 'ow-mitigation', group: 'Overwatch', emoji: '🛡️', title: 'The Wall', desc: '15,000 mitigation in one match', progress: (s) => [s.ow.maxMitigation, 15000] },
+  { id: 'ow-flex', group: 'Overwatch', emoji: '🎭', title: 'Flex Player', desc: 'Play 8 different heroes', progress: (s) => [s.ow.heroes, 8] },
+
+  // Fortnite
+  { id: 'fn-first-win', group: 'Fortnite', emoji: '👑', title: 'Victory Royale', desc: 'Win a Fortnite game', progress: (s) => [s.fn.wins, 1] },
+  { id: 'fn-10-wins', group: 'Fortnite', emoji: '🏆', title: 'Dub Machine', desc: 'Win 10 Fortnite games', progress: (s) => [s.fn.wins, 10] },
+  { id: 'fn-10-kills', group: 'Fortnite', emoji: '🎯', title: 'Squad Wiper', desc: '10 kills in one game', progress: (s) => [s.fn.maxKills, 10] },
+  { id: 'fn-solo-win', group: 'Fortnite', emoji: '🐺', title: 'Lone Wolf', desc: 'Win a Solo game', progress: (s) => [s.fn.soloWins, 1] },
+  { id: 'fn-100-kills', group: 'Fortnite', emoji: '💀', title: 'Century', desc: '100 Fortnite kills in total', progress: (s) => [s.fn.kills, 100] },
+  { id: 'fn-sprites-25', group: 'Fortnite', emoji: '✨', title: 'Sprite Hunter', desc: 'Collect 25 sprite variants', progress: (s) => [s.sprites.ticks, 25] },
+  { id: 'fn-sprites-all', group: 'Fortnite', emoji: '🌈', title: "Gotta Catch 'Em All", desc: 'Collect every sprite variant in a season', progress: (s) => [s.sprites.bestSeasonPct, 100] },
+
+  // Squad
+  { id: 'bounty-5', group: 'Squad', emoji: '🤠', title: 'Bounty Hunter', desc: 'Claim 5 bounties', progress: (s) => [s.squad.claimed, 5] },
+  { id: 'quoted-5', group: 'Squad', emoji: '💬', title: 'Quotable', desc: 'Get quoted 5 times', progress: (s) => [s.squad.quoted, 5] },
+  { id: 'quote-fire', group: 'Squad', emoji: '🌶️', title: 'Crowd Pleaser', desc: 'Say something that gets 3 fires', progress: (s) => [s.squad.bestQuoteFires, 3] },
+  { id: 'all-rounder', group: 'Squad', emoji: '🎮', title: 'All-Rounder', desc: 'Log games in both Overwatch and Fortnite', progress: (s) => [(s.ow.games > 0) + (s.fn.games > 0), 2] },
+]
+
+const emptyStats = () => ({
+  ow: { games: 0, wins: 0, bestStreak: 0, maxElims: 0, maxDamage: 0, maxHealing: 0, maxMitigation: 0, heroes: 0 },
+  fn: { games: 0, wins: 0, maxKills: 0, soloWins: 0, kills: 0 },
+  sprites: { ticks: 0, bestSeasonPct: 0 },
+  squad: { claimed: 0, quoted: 0, bestQuoteFires: 0 },
+})
+
+/** Build per-player stats from all the raw data. Returns { [userId]: stats }. */
+export function buildPlayerStats({ profiles, owMatches, fnMatches, bounties, quotes, sprites, collection }) {
+  const stats = Object.fromEntries(profiles.map((p) => [p.id, emptyStats()]))
+  const get = (id) => (stats[id] ??= emptyStats())
+
+  // Overwatch — oldest first for streaks.
+  const heroSets = {}
+  const streak = {}
+  for (const m of [...owMatches].reverse()) {
+    const won = isWin(m.result)
+    for (const s of m.ow_match_stats) {
+      const o = get(s.player_id).ow
+      o.games += 1
+      if (won) o.wins += 1
+      streak[s.player_id] = won ? (streak[s.player_id] ?? 0) + 1 : 0
+      o.bestStreak = Math.max(o.bestStreak, streak[s.player_id])
+      o.maxElims = Math.max(o.maxElims, s.eliminations ?? 0)
+      o.maxDamage = Math.max(o.maxDamage, s.damage ?? 0)
+      o.maxHealing = Math.max(o.maxHealing, s.healing ?? 0)
+      o.maxMitigation = Math.max(o.maxMitigation, s.mitigation ?? 0)
+      if (s.hero?.trim()) (heroSets[s.player_id] ??= new Set()).add(s.hero.trim().toLowerCase())
+    }
+  }
+  for (const [id, set] of Object.entries(heroSets)) get(id).ow.heroes = set.size
+
+  // Fortnite
+  for (const m of fnMatches) {
+    for (const s of m.fn_match_stats) {
+      const f = get(s.player_id).fn
+      f.games += 1
+      f.kills += s.kills ?? 0
+      f.maxKills = Math.max(f.maxKills, s.kills ?? 0)
+      if (m.won) {
+        f.wins += 1
+        if (m.team_size === 1) f.soloWins += 1
+      }
+    }
+  }
+
+  // Sprites: total ticks + best season completion %.
+  const seasonTotals = {}
+  const spriteSeason = {}
+  for (const sp of sprites) {
+    seasonTotals[sp.season] = (seasonTotals[sp.season] ?? 0) + sp.variants.length
+    spriteSeason[sp.id] = sp.season
+  }
+  const perUserSeason = {}
+  for (const c of collection) {
+    get(c.user_id).sprites.ticks += 1
+    const season = spriteSeason[c.sprite_id]
+    if (!season) continue
+    const key = `${c.user_id}|${season}`
+    perUserSeason[key] = (perUserSeason[key] ?? 0) + 1
+  }
+  for (const [key, n] of Object.entries(perUserSeason)) {
+    const [uid, season] = key.split('|')
+    const pct = Math.floor((n / seasonTotals[season]) * 100)
+    get(uid).sprites.bestSeasonPct = Math.max(get(uid).sprites.bestSeasonPct, pct)
+  }
+
+  // Squad
+  for (const b of bounties) if (b.claimed_by) get(b.claimed_by).squad.claimed += 1
+  for (const q of quotes) {
+    if (!q.said_by) continue
+    const sq = get(q.said_by).squad
+    sq.quoted += 1
+    sq.bestQuoteFires = Math.max(sq.bestQuoteFires, q.quote_likes?.length ?? 0)
+  }
+
+  return stats
+}
+
+/** [{ ...achievement, current, target, unlocked, pct }] for one player's stats. */
+export function evaluate(stats) {
+  return ACHIEVEMENTS.map((a) => {
+    const [current, target] = a.progress(stats)
+    const capped = Math.min(current, target)
+    return { ...a, current: capped, target, unlocked: current >= target, pct: Math.round((capped / target) * 100) }
+  })
+}

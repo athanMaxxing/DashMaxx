@@ -4,14 +4,15 @@ import { supabase } from '../../lib/supabase'
 import { timeAgo } from '../../lib/time'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
-import GadgetCard, { GadgetMessage } from '../GadgetCard'
+import Avatar from '../Avatar'
+import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 
 const LIMIT = 50
 
 /** Tiny live squad chat via Supabase Realtime. */
 export default function Shoutbox() {
   const { user } = useAuth()
-  const { usernames } = useSquadData()
+  const { usernames, profileById } = useSquadData()
   const [messages, setMessages] = useState([])
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
@@ -85,7 +86,7 @@ export default function Shoutbox() {
     <GadgetCard title="Shoutbox" icon={MessageSquare}>
       <div ref={listRef} className="mb-3 h-64 space-y-2 overflow-y-auto pr-1">
         {loading ? (
-          <GadgetMessage>Loading…</GadgetMessage>
+          <GadgetSkeleton />
         ) : messages.length === 0 ? (
           <GadgetMessage>Quiet in here. Say something.</GadgetMessage>
         ) : (
@@ -93,6 +94,7 @@ export default function Shoutbox() {
             const mine = m.user_id === user.id
             return (
               <div key={m.id} className="group flex items-start gap-2">
+                <Avatar profile={profileById[m.user_id] ?? { username: usernames[m.user_id] }} size="md" className="mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs">
                     <span className={`font-semibold ${mine ? 'text-indigo-300' : 'text-gray-200'}`}>

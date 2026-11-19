@@ -4,7 +4,7 @@
  *   fn_match_stats (id, match_id, player_id, kills)
  */
 export const FN_MATCH_SELECT = `
-  id, won, dropped_together, mode, fill, team_size, created_at,
+  id, won, dropped_together, mode, fill, team_size, created_by, created_at,
   fn_match_stats ( id, player_id, kills, profiles ( id, username ) )
 `
 

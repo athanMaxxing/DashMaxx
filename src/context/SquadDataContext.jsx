@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { MATCH_SELECT, MATCHES_CHANGED_EVENT } from '../lib/overwatch'
+import { useRealtime } from '../lib/useRealtime'
 
 /*
  * One shared fetch of squad profiles + Overwatch matches for every gadget on the dashboard,
@@ -17,11 +18,12 @@ export function SquadDataProvider({ children }) {
   const [error, setError] = useState('')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
 
-  const reload = useCallback(async () => {
-    setLoading(true)
+  // `silent` = background refresh (realtime) without flashing loading states.
+  const reload = useCallback(async (silent = false) => {
+    if (silent !== true) setLoading(true)
     setError('')
     const [profilesRes, matchesRes] = await Promise.all([
-      supabase.from('profiles').select('id, username').order('username'),
+      supabase.from('profiles').select('id, username, avatar_emoji, avatar_color').order('username'),
       supabase.from('ow_matches').select(MATCH_SELECT).order('created_at', { ascending: false }),
     ])
     if (profilesRes.error || matchesRes.error) {
@@ -39,6 +41,8 @@ export function SquadDataProvider({ children }) {
     return () => window.removeEventListener(MATCHES_CHANGED_EVENT, reload)
   }, [reload])
 
+  useRealtime(['profiles', 'ow_matches', 'ow_match_stats'], () => reload(true))
+
   const value = useMemo(() => {
     const seasons = [...new Set(matches.map((m) => m.season).filter(Boolean))].sort((a, b) =>
       b.localeCompare(a, undefined, { numeric: true }),
@@ -50,9 +54,11 @@ export function SquadDataProvider({ children }) {
         (!filters.queue || m.queue === filters.queue),
     )
     const usernames = Object.fromEntries(profiles.map((p) => [p.id, p.username]))
+    const profileById = Object.fromEntries(profiles.map((p) => [p.id, p]))
     return {
       profiles,
       usernames,
+      profileById,
       matches,
       filteredMatches,
       seasons,

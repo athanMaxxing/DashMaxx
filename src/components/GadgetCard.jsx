@@ -81,3 +81,27 @@ export function GadgetMessage({ children, tone = 'muted' }) {
   const color = tone === 'error' ? 'text-rose-400' : 'text-gray-500'
   return <p className={`py-8 text-center text-sm ${color}`}>{children}</p>
 }
+
+/** Shimmering placeholder rows while a gadget loads. */
+export function GadgetSkeleton({ rows = 4 }) {
+  return (
+    <div className="animate-pulse space-y-2.5 py-2" aria-label="Loading">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="h-9 rounded-lg bg-white/[0.04]" style={{ width: `${100 - (i % 3) * 12}%` }} />
+      ))}
+    </div>
+  )
+}
+
+/** Whole-card placeholder used while a gadget's code is still downloading. */
+export function CardSkeleton() {
+  return (
+    <div className="card animate-pulse p-4">
+      <div className="mb-4 flex items-center gap-2.5">
+        <div className="h-7 w-7 rounded-lg bg-white/[0.06]" />
+        <div className="h-4 w-32 rounded bg-white/[0.06]" />
+      </div>
+      <GadgetSkeleton rows={3} />
+    </div>
+  )
+}
