@@ -118,10 +118,16 @@ export default function FnMatchTracker() {
   )
 }
 
-function Toggle({ label, checked, onChange }) {
+function Toggle({ label, checked, onChange, disabled = false }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-300">
-      <input type="checkbox" className="h-4 w-4 accent-indigo-500" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    <label className={`flex items-center gap-2 text-sm ${disabled ? 'cursor-not-allowed text-gray-600' : 'cursor-pointer text-gray-300'}`}>
+      <input
+        type="checkbox"
+        className="h-4 w-4 accent-indigo-500"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+      />
       {label}
     </label>
   )
@@ -140,12 +146,10 @@ function FnMatchForm({ profiles, currentUserId, defaultMode, defaultTeamSize, on
   const chosen = players.map((p) => p.player_id).filter(Boolean)
   const tooMany = players.length > teamSize
   const sizeLabel = teamSizeLabel(teamSize)
-  const canFill = teamSize > 1
+  // Fill = randoms took the empty spots, so it needs a team with room left over.
+  const canFill = players.length < teamSize
 
-  const pickSize = (n) => {
-    setTeamSize(n)
-    if (n === 1) setFill(false) // you can't fill in Solo
-  }
+  const pickSize = (n) => setTeamSize(n)
   const update = (i, patch) => setPlayers((prev) => prev.map((p, j) => (j === i ? { ...p, ...patch } : p)))
 
   async function submit(e) {
@@ -221,7 +225,12 @@ function FnMatchForm({ profiles, currentUserId, defaultMode, defaultTeamSize, on
 
       <div className="flex flex-wrap gap-4">
         <Toggle label="Dropped together" checked={dropped} onChange={setDropped} />
-        {canFill && <Toggle label="Fill (randoms)" checked={fill} onChange={setFill} />}
+        <Toggle
+          label={canFill ? 'Fill (randoms)' : `Fill (randoms) — ${teamSize === 1 ? 'not in Solo' : 'team is full'}`}
+          checked={canFill && fill}
+          onChange={setFill}
+          disabled={!canFill}
+        />
       </div>
 
       <div className="space-y-2">
