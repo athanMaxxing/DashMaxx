@@ -1,0 +1,1 @@
+function e(e){let t=Math.max(0,(Date.now()-new Date(e).getTime())/1e3);if(t<45)return`just now`;let n=Math.round(t/60);if(n<60)return`${n}m ago`;let r=Math.round(n/60);return r<24?`${r}h ago`:`${Math.round(r/24)}d ago`}var t=`dashmaxx:bounties-changed`;function n(e){let t=new Date,n=t.getFullYear()*1e3+t.getMonth()*40+t.getDate();return e?n%e:0}export{n,e as r,t};
