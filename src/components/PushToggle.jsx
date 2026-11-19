@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { BellRing } from 'lucide-react'
+import { BellRing, Send } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { disablePush, enablePush, isSubscribed, needsInstallForPush, pushConfigured, pushSupported } from '../lib/push'
+import { disablePush, enablePush, isSubscribed, needsInstallForPush, pushConfigured, pushSupported, sendTestPush } from '../lib/push'
 import { useToast } from './Toast'
 
 /** "Ping me when someone goes On now" switch. Applies to this device only. */
@@ -30,6 +30,20 @@ export default function PushToggle() {
         : typeof Notification !== 'undefined' && Notification.permission === 'denied'
           ? 'Notifications are blocked for this site. Allow them in your browser or phone settings.'
           : ''
+
+  async function test() {
+    setBusy(true)
+    try {
+      const r = await sendTestPush()
+      if (r?.sent > 0) toast.success(`Test sent to ${r.sent} of your device${r.sent === 1 ? '' : 's'}. Check your notifications.`)
+      else if (r?.failures?.length) toast.error(`Push was rejected: ${r.failures[0]}`)
+      else toast.error(r?.reason ? `Nothing sent: ${r.reason}` : 'Nothing sent.')
+    } catch (err) {
+      toast.error(`Test failed: ${err.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function toggle() {
     setBusy(true)
@@ -70,6 +84,11 @@ export default function PushToggle() {
           <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? 'left-[22px]' : 'left-0.5'}`} />
         </button>
       </div>
+      {on && (
+        <button type="button" className="btn-ghost mt-2 w-full py-1.5 text-xs" onClick={test} disabled={busy}>
+          <Send className="h-3.5 w-3.5" /> Send test notification to my devices
+        </button>
+      )}
     </div>
   )
 }

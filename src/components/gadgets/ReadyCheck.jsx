@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
 import Avatar from '../Avatar'
 import GadgetCard, { GadgetSkeleton } from '../GadgetCard'
+import { useToast } from '../Toast'
 
 const STATUSES = [
   { value: 'online', label: 'On now', dot: 'bg-green-500', btn: 'bg-green-600 text-white' },
@@ -20,6 +21,7 @@ const STALE_MS = 12 * 60 * 60 * 1000 // statuses older than 12h count as "no sta
 /** Live "who's on tonight" board, synced instantly via Supabase Realtime. */
 export default function ReadyCheck() {
   const { user } = useAuth()
+  const toast = useToast()
   const { profiles } = useSquadData()
   const [statuses, setStatuses] = useState({}) // user_id -> row
   const [game, setGame] = useState('')
@@ -68,7 +70,13 @@ export default function ReadyCheck() {
       setStatuses((s) => ({ ...s, [user.id]: prev }))
       setError(err.message)
     } else if (status === 'online') {
-      notifySquadOnline() // push "<you> is on now" to the squad (server applies a cooldown)
+      // Push "<you> is on now" to the squad (the server applies a 20-min cooldown).
+      notifySquadOnline()
+        .then((r) => {
+          if (r?.sent > 0) toast.info(`Pinged ${r.sent} squad device${r.sent === 1 ? '' : 's'} 🔔`)
+          else if (r?.reason === 'cooldown') toast.info(`Squad was pinged recently. Next ping in ${r.minutesLeft} min.`)
+        })
+        .catch(() => {})
     }
   }
 

@@ -70,7 +70,16 @@ export async function disablePush() {
   await sub.unsubscribe()
 }
 
-/** Ask the server to ping the squad that I'm on now (it handles cooldowns). Fire-and-forget. */
-export function notifySquadOnline() {
-  supabase.functions.invoke('notify-online').catch(() => {})
+/** Ask the server to ping the squad that I'm on now (it handles cooldowns). Returns its summary. */
+export async function notifySquadOnline() {
+  const { data, error } = await supabase.functions.invoke('notify-online', { body: {} })
+  if (error) throw error
+  return data // { sent, devices, reason?, minutesLeft? }
+}
+
+/** Push a test notification to all of MY subscribed devices. */
+export async function sendTestPush() {
+  const { data, error } = await supabase.functions.invoke('notify-online', { body: { test: true } })
+  if (error) throw error
+  return data // { sent, devices, removed, failures, reason? }
 }
