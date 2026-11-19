@@ -2,10 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { supabase } from '../lib/supabase'
 import { FN_MATCH_SELECT, FN_MATCHES_CHANGED_EVENT } from '../lib/fortnite'
 
-/** Shared Fortnite matches + global Fortnite filters (mode / fill / dropped together). */
+/** Shared Fortnite matches + global Fortnite filters (mode / team size / fill / dropped together). */
 const FortniteDataContext = createContext(null)
 
-const EMPTY_FILTERS = { mode: '', fill: '', dropped: '' }
+const EMPTY_FILTERS = { mode: '', size: '', fill: '', dropped: '' }
 
 export function FortniteDataProvider({ children }) {
   const [matches, setMatches] = useState([])
@@ -36,6 +36,7 @@ export function FortniteDataProvider({ children }) {
     const filteredMatches = matches.filter(
       (m) =>
         (!filters.mode || m.mode === filters.mode) &&
+        (!filters.size || String(m.team_size) === filters.size) &&
         (!filters.fill || String(m.fill) === filters.fill) &&
         (!filters.dropped || String(m.dropped_together) === filters.dropped),
     )
@@ -47,7 +48,7 @@ export function FortniteDataProvider({ children }) {
       filters,
       setFilter: (key, val) => setFilters((f) => ({ ...f, [key]: val })),
       clearFilters: () => setFilters(EMPTY_FILTERS),
-      filtersActive: Boolean(filters.mode || filters.fill || filters.dropped),
+      filtersActive: Boolean(filters.mode || filters.size || filters.fill || filters.dropped),
       loading,
       error,
       reload,

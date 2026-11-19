@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
 import { useFortniteData } from '../../context/FortniteDataContext'
-import { FN_MATCHES_CHANGED_EVENT, FN_MODES, fnPlayedTogether, pct, totalKills } from '../../lib/fortnite'
+import { FN_MATCHES_CHANGED_EVENT, FN_MODES, fnPlayedTogether, pct, TEAM_SIZES, teamSizeLabel, totalKills } from '../../lib/fortnite'
 import GadgetCard, { GadgetMessage } from '../GadgetCard'
 import PlayerPicker from '../PlayerPicker'
 
@@ -47,6 +47,7 @@ export default function FnMatchTracker() {
           profiles={profiles}
           currentUserId={user.id}
           defaultMode={lastMode || 'Build'}
+          defaultTeamSize={matches[0]?.team_size ?? 4}
           onSaved={() => {
             setShowForm(false)
             window.dispatchEvent(new Event(FN_MATCHES_CHANGED_EVENT))
@@ -84,7 +85,7 @@ export default function FnMatchTracker() {
                   {m.won ? '#1' : 'Loss'}
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                  {m.mode}
+                  {m.mode} · {teamSizeLabel(m.team_size)}
                   <span className="ml-2 text-xs font-normal text-gray-500">
                     {m.fill ? 'Fill' : 'No fill'} · {m.dropped_together ? 'Dropped together' : 'Split drop'}
                   </span>
@@ -126,9 +127,10 @@ function Toggle({ label, checked, onChange }) {
   )
 }
 
-function FnMatchForm({ profiles, currentUserId, defaultMode, onSaved }) {
+function FnMatchForm({ profiles, currentUserId, defaultMode, defaultTeamSize, onSaved }) {
   const [won, setWon] = useState(false)
   const [mode, setMode] = useState(defaultMode)
+  const [teamSize, setTeamSize] = useState(defaultTeamSize)
   const [fill, setFill] = useState(false)
   const [dropped, setDropped] = useState(true)
   const [players, setPlayers] = useState(() => [{ player_id: currentUserId, kills: '' }])
@@ -136,6 +138,14 @@ function FnMatchForm({ profiles, currentUserId, defaultMode, onSaved }) {
   const [error, setError] = useState('')
 
   const chosen = players.map((p) => p.player_id).filter(Boolean)
+  const tooMany = players.length > teamSize
+  const sizeLabel = teamSizeLabel(teamSize)
+  const canFill = teamSize > 1
+
+  const pickSize = (n) => {
+    setTeamSize(n)
+    if (n === 1) setFill(false) // you can't fill in Solo
+  }
   const update = (i, patch) => setPlayers((prev) => prev.map((p, j) => (j === i ? { ...p, ...patch } : p)))
 
   async function submit(e) {
@@ -144,11 +154,13 @@ function FnMatchForm({ profiles, currentUserId, defaultMode, onSaved }) {
     const valid = players.filter((p) => p.player_id)
     if (!mode.trim()) return setError('Pick a mode.')
     if (valid.length === 0) return setError('Add at least one player.')
+    if (valid.length > teamSize)
+      return setError(`${sizeLabel} allows ${teamSize} player${teamSize === 1 ? '' : 's'} — remove ${valid.length - teamSize} or pick a bigger team size.`)
     setSaving(true)
     try {
       const { data: match, error: mErr } = await supabase
         .from('fn_matches')
-        .insert({ won, mode: mode.trim(), fill, dropped_together: dropped })
+        .insert({ won, mode: mode.trim(), fill: canFill && fill, dropped_together: dropped, team_size: teamSize })
         .select('id')
         .single()
       if (mErr) throw mErr
@@ -192,14 +204,29 @@ function FnMatchForm({ profiles, currentUserId, defaultMode, onSaved }) {
         </div>
       </div>
 
+      <div className="grid grid-cols-4 gap-1 rounded-lg bg-gray-950/70 p-1 ring-1 ring-white/5">
+        {TEAM_SIZES.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            onClick={() => pickSize(t.value)}
+            className={`rounded-md py-1.5 text-sm font-medium transition ${
+              teamSize === t.value ? 'bg-violet-500/25 text-violet-100 ring-1 ring-violet-400/50' : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-wrap gap-4">
         <Toggle label="Dropped together" checked={dropped} onChange={setDropped} />
-        <Toggle label="Fill (randoms)" checked={fill} onChange={setFill} />
+        {canFill && <Toggle label="Fill (randoms)" checked={fill} onChange={setFill} />}
       </div>
 
       <div className="space-y-2">
         {players.map((p, i) => (
-          <div key={i} className="grid grid-cols-[1fr_6rem_auto] gap-2">
+          <div key={i} className={`grid grid-cols-[1fr_6rem_auto] gap-2 ${i >= teamSize ? 'rounded-lg ring-1 ring-rose-500/60' : ''}`}>
             <select className="input" value={p.player_id} onChange={(e) => update(i, { player_id: e.target.value })} required>
               <option value="">Player…</option>
               {profiles.map((pr) => (
@@ -234,14 +261,20 @@ function FnMatchForm({ profiles, currentUserId, defaultMode, onSaved }) {
           type="button"
           className="btn-ghost"
           onClick={() => setPlayers((prev) => [...prev, { player_id: '', kills: '' }])}
-          disabled={players.length >= Math.max(profiles.length, 1)}
+          disabled={players.length >= Math.min(teamSize, Math.max(profiles.length, 1))}
+          title={players.length >= teamSize ? `${sizeLabel} is full` : undefined}
         >
           <Plus className="h-4 w-4" /> Player
         </button>
-        <button type="submit" className="btn-primary" disabled={saving}>
+        <button type="submit" className="btn-primary" disabled={saving || tooMany}>
           {saving ? 'Saving…' : 'Save game'}
         </button>
       </div>
+      {tooMany && (
+        <p className="text-sm text-rose-400">
+          {sizeLabel} only has room for {teamSize} player{teamSize === 1 ? '' : 's'} — remove {players.length - teamSize} or pick a bigger team size.
+        </p>
+      )}
       {error && <p className="text-sm text-red-400">{error}</p>}
     </form>
   )

@@ -1,5 +1,6 @@
 import { SlidersHorizontal } from 'lucide-react'
 import { useFortniteData } from '../context/FortniteDataContext'
+import { TEAM_SIZES } from '../lib/fortnite'
 
 /** Global mode / fill / dropped-together filter for every Fortnite stats gadget. */
 export default function FnFilterBar() {
@@ -24,6 +25,7 @@ export default function FnFilterBar() {
     <div className="flex flex-wrap items-center gap-2">
       <SlidersHorizontal className="h-4 w-4 text-gray-500" />
       {select('mode', 'Mode', [['', 'All modes'], ...modes.map((m) => [m, m])])}
+      {select('size', 'Team size', [['', 'All sizes'], ...TEAM_SIZES.map((t) => [String(t.value), t.label])])}
       {select('fill', 'Fill', [['', 'Fill + no fill'], ['false', 'No fill'], ['true', 'Filled']])}
       {select('dropped', 'Drop', [['', 'Any drop'], ['true', 'Dropped together'], ['false', 'Split drop']])}
       {filtersActive && (
