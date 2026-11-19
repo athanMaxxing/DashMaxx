@@ -79,6 +79,7 @@ const SECTIONS = [
   {
     id: 'overwatch',
     title: 'Overwatch',
+    short: 'OW',
     subtitle: 'Matches, heroes, duos and records',
     icon: Swords,
     accent: 'orange',
@@ -95,6 +96,7 @@ const SECTIONS = [
   {
     id: 'fortnite',
     title: 'Fortnite',
+    short: 'FN',
     subtitle: 'Victory Royales, kills and sprites',
     icon: Crosshair,
     accent: 'violet',
@@ -174,7 +176,7 @@ export default function Dashboard() {
   )
 
   const tabs = [
-    ...sections.map((s) => ({ id: s.id, title: s.title, icon: s.icon, accent: s.accent })),
+    ...sections.map((s) => ({ id: s.id, title: s.title, short: s.short, icon: s.icon, accent: s.accent })),
     ...(isAdmin ? [{ id: 'admin', title: 'Admin', icon: ShieldCheck, accent: 'rose' }] : []),
   ]
   const requested = params.get('tab') ?? tabs[0]?.id
@@ -196,7 +198,7 @@ export default function Dashboard() {
       <FortniteDataProvider>
         <div className="space-y-6">
           {/* Tab bar */}
-          <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 -mx-3 border-b border-white/[0.06] bg-gray-950/70 px-3 py-2 backdrop-blur-xl sm:-mx-4 sm:px-4">
+          <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 -mx-4 hidden border-b border-white/[0.06] bg-gray-950/70 px-4 py-2 backdrop-blur-xl sm:block">
             <div className="flex items-center gap-2">
               <nav className="-my-1 flex min-w-0 flex-1 gap-1 overflow-x-auto py-1 [scrollbar-width:none]">
                 {tabs.map((t) => {
@@ -227,6 +229,45 @@ export default function Dashboard() {
               </button>
             </div>
           </div>
+
+          {/* Phones: app-style tab bar pinned to the bottom, within thumb reach. */}
+          <nav
+            className="fixed inset-x-0 bottom-0 z-30 border-t border-white/[0.08] bg-gray-950/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:hidden"
+            aria-label="Sections"
+          >
+            <div className="flex">
+              {tabs.map((t) => {
+                const Icon = t.icon
+                const on = t.id === active
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    aria-current={on ? 'page' : undefined}
+                    className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 pb-2 pt-2.5 text-[10px] font-medium transition ${
+                      on ? ACCENTS[t.accent].text : 'text-gray-500 active:text-gray-300'
+                    }`}
+                  >
+                    {on && <span className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-current" />}
+                    <Icon className={`h-5 w-5 transition ${on ? 'scale-110' : ''}`} />
+                    <span className="max-w-full truncate px-0.5">{t.short ?? t.title}</span>
+                  </button>
+                )
+              })}
+              <button
+                onClick={() => {
+                  setCustomizing((v) => !v)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 pb-2 pt-2.5 text-[10px] font-medium transition ${
+                  customizing ? 'text-indigo-300' : 'text-gray-500 active:text-gray-300'
+                }`}
+              >
+                <Settings2 className="h-5 w-5" />
+                <span>Edit</span>
+              </button>
+            </div>
+          </nav>
 
           {customizing && (
             <GadgetCustomizer

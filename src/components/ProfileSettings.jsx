@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from './Toast'
 import Avatar, { AVATAR_COLORS, AVATAR_EMOJIS } from './Avatar'
+import PushToggle from './PushToggle'
 
 /** Modal for changing your username, emoji avatar and colour. */
 export default function ProfileSettings({ onClose }) {
@@ -46,12 +47,12 @@ export default function ProfileSettings({ onClose }) {
       <form
         onSubmit={save}
         onClick={(e) => e.stopPropagation()}
-        className="card w-full max-w-md animate-fade-up space-y-5 p-5"
+        className="card max-h-[90vh] w-full max-w-md animate-fade-up space-y-5 overflow-y-auto p-5"
         role="dialog"
         aria-label="Profile settings"
       >
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-lg font-semibold">Your profile</h2>
+          <h2 className="font-display text-lg font-semibold">Settings</h2>
           <button type="button" className="btn-ghost p-1.5" onClick={onClose} aria-label="Close">
             <X className="h-4 w-4" />
           </button>
@@ -110,6 +111,8 @@ export default function ProfileSettings({ onClose }) {
             ))}
           </div>
         </div>
+
+        <PushToggle />
 
         {error && <p className="text-sm text-rose-400">{error}</p>}
 

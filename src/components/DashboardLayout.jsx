@@ -40,7 +40,7 @@ export default function DashboardLayout() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-screen-2xl px-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 sm:px-4 sm:pt-6">
+      <main className="mx-auto max-w-screen-2xl px-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5 sm:px-4 sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pt-6">
         <Outlet />
       </main>
       {editingProfile && <ProfileSettings onClose={() => setEditingProfile(false)} />}

@@ -31,6 +31,8 @@ export default defineConfig({
       workbox: {
         // Cache the app shell so it opens instantly; live data always comes from Supabase.
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // Push notification handling (public/push-handler.js).
+        importScripts: ['push-handler.js'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,

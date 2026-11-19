@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Radio } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { notifySquadOnline } from '../../lib/push'
 import { timeAgo } from '../../lib/time'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
@@ -66,6 +67,8 @@ export default function ReadyCheck() {
     if (err) {
       setStatuses((s) => ({ ...s, [user.id]: prev }))
       setError(err.message)
+    } else if (status === 'online') {
+      notifySquadOnline() // push "<you> is on now" to the squad (server applies a cooldown)
     }
   }
 
