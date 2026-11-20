@@ -8,6 +8,7 @@ import { isWin } from '../../lib/overwatch'
 import { pct, totalKills } from '../../lib/fortnite'
 import { useSquadData } from '../../context/SquadDataContext'
 import { useFortniteData } from '../../context/FortniteDataContext'
+import { useRocketLeagueData } from '../../context/RocketLeagueDataContext'
 import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 import Avatar from '../Avatar'
 
@@ -139,6 +140,7 @@ function SessionRow({ label, tab, children }) {
 export function HomeLastSessions() {
   const { matches: ow, loading: owLoading } = useSquadData()
   const { matches: fn, loading: fnLoading } = useFortniteData()
+  const { matches: rl, loading: rlLoading } = useRocketLeagueData()
 
   const lastDay = (list) => {
     if (!list.length) return null
@@ -147,10 +149,11 @@ export function HomeLastSessions() {
   }
   const owS = lastDay(ow)
   const fnS = lastDay(fn)
+  const rlS = lastDay(rl)
 
   return (
     <GadgetCard title="Last sessions" icon={Trophy}>
-      {owLoading || fnLoading ? (
+      {owLoading || fnLoading || rlLoading ? (
         <GadgetSkeleton rows={2} />
       ) : (
         <div className="space-y-2">
@@ -171,6 +174,18 @@ export function HomeLastSessions() {
                 <span className="text-gray-200">{fnS.day}</span> ·{' '}
                 <span className="font-semibold text-amber-300">{fnS.matches.filter((m) => m.won).length} wins</span> in {fnS.matches.length} ·{' '}
                 {fnS.matches.reduce((n, m) => n + totalKills(m), 0)} kills ({pct(fnS.matches.filter((m) => m.won).length, fnS.matches.length)}%)
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500">No games yet.</p>
+            )}
+          </SessionRow>
+          <SessionRow label="Rocket League" tab="rocketleague">
+            {rlS ? (
+              <p className="text-sm text-gray-400">
+                <span className="text-gray-200">{rlS.day}</span> ·{' '}
+                <span className="font-semibold text-emerald-400">{rlS.matches.filter((m) => m.won).length}W</span>{' '}
+                <span className="font-semibold text-rose-400">{rlS.matches.filter((m) => !m.won).length}L</span> ·{' '}
+                {rlS.matches.reduce((n, m) => n + m.our_goals, 0)} goals
               </p>
             ) : (
               <p className="text-sm text-gray-500">No games yet.</p>

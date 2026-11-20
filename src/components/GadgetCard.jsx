@@ -41,6 +41,13 @@ export const ACCENTS = {
     tab: 'bg-amber-500/15 text-amber-200 ring-amber-400/40',
     title: 'from-yellow-200 to-amber-400',
   },
+  sky: {
+    chip: 'bg-sky-500/15 text-sky-300 ring-sky-400/30',
+    line: 'from-sky-500/0 via-sky-400/70 to-sky-500/0',
+    text: 'text-sky-300',
+    tab: 'bg-sky-500/15 text-sky-200 ring-sky-400/40',
+    title: 'from-sky-200 to-blue-400',
+  },
   rose: {
     chip: 'bg-rose-500/15 text-rose-300 ring-rose-400/30',
     line: 'from-rose-500/0 via-rose-400/70 to-rose-500/0',

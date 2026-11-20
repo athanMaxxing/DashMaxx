@@ -1,14 +1,16 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Crosshair, Gamepad, Home, LayoutGrid, Settings2, ShieldCheck, Swords, Users } from 'lucide-react'
+import { Car, Crosshair, Gamepad, Home, LayoutGrid, Settings2, ShieldCheck, Swords, Users } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { SquadDataProvider } from '../context/SquadDataContext'
 import { FortniteDataProvider } from '../context/FortniteDataContext'
+import { RocketLeagueDataProvider } from '../context/RocketLeagueDataContext'
 import { useGadgetPrefs } from '../lib/useGadgetPrefs'
 import { AccentContext, ACCENTS, CardSkeleton } from '../components/GadgetCard'
 import GadgetCustomizer from '../components/GadgetCustomizer'
 import OwFilterBar from '../components/OwFilterBar'
 import FnFilterBar from '../components/FnFilterBar'
+import RlFilterBar from '../components/RlFilterBar'
 
 /*
  * Every gadget is loaded on demand (its own JS chunk), so the first screen
@@ -37,6 +39,11 @@ const FnSessionRecap = g(() => import('../components/gadgets/FnSessionRecap'))
 const FnRecords = g(() => import('../components/gadgets/FnRecords'))
 const ShopTimer = g(() => import('../components/gadgets/ShopTimer'))
 const SpriteChecklist = g(() => import('../components/gadgets/SpriteChecklist'))
+const RlMatchTracker = g(() => import('../components/gadgets/RlMatchTracker'))
+const RlRankProgress = g(() => import('../components/gadgets/RlRankProgress'))
+const RlLeaderboard = g(() => import('../components/gadgets/RlLeaderboard'))
+const RlSessionRecap = g(() => import('../components/gadgets/RlSessionRecap'))
+const RlRecords = g(() => import('../components/gadgets/RlRecords'))
 const QuoteWall = g(() => import('../components/gadgets/QuoteWall'))
 const BountyBoard = g(() => import('../components/gadgets/BountyBoard'))
 const SquadGoals = g(() => import('../components/gadgets/SquadGoals'))
@@ -109,6 +116,22 @@ const SECTIONS = [
       { id: 'fn-records', title: 'Records', Component: FnRecords },
       { id: 'fn-shop', title: 'Item Shop Refresh', Component: ShopTimer },
       { id: 'sprites', title: 'Sprite Checklist', Component: SpriteChecklist },
+    ],
+  },
+  {
+    id: 'rocketleague',
+    title: 'Rocket League',
+    short: 'RL',
+    subtitle: 'Ranked climbs, goals, saves and MVPs',
+    icon: Car,
+    accent: 'sky',
+    actions: <RlFilterBar />,
+    gadgets: [
+      { id: 'rl-tracker', title: 'Match Tracker', Component: RlMatchTracker },
+      { id: 'rl-rank', title: 'Rank Progression', Component: RlRankProgress, span: 'xl:col-span-2' },
+      { id: 'rl-leaderboard', title: 'Rocket League Leaderboard', Component: RlLeaderboard, span: 'xl:col-span-2' },
+      { id: 'rl-session', title: 'Session Recap', Component: RlSessionRecap },
+      { id: 'rl-records', title: 'Records', Component: RlRecords },
     ],
   },
   {
@@ -198,6 +221,7 @@ export default function Dashboard() {
   return (
     <SquadDataProvider>
       <FortniteDataProvider>
+      <RocketLeagueDataProvider>
         <div className="space-y-6">
           {/* Tab bar */}
           <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 -mx-4 hidden border-b border-white/[0.06] bg-gray-950/70 px-4 py-2 backdrop-blur-xl sm:block">
@@ -303,6 +327,7 @@ export default function Dashboard() {
             <Section key={section.id} section={section} gadgets={section.shown} />
           )}
         </div>
+      </RocketLeagueDataProvider>
       </FortniteDataProvider>
     </SquadDataProvider>
   )

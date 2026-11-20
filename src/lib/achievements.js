@@ -1,4 +1,5 @@
 import { isWin } from './overwatch'
+import { rankBands, RANKED_PLAYLISTS } from './rocketleague'
 
 /*
  * Achievements are computed from existing data — nothing extra is stored.
@@ -29,6 +30,16 @@ export const ACHIEVEMENTS = [
   { id: 'fn-sprites-fortune', group: 'Fortnite', emoji: '🍀', title: 'Fortune Finder', desc: 'Collect every Fortune sprite in a season', progress: (s) => best(s, 'Fortune') },
   { id: 'fn-sprites-mastered', group: 'Fortnite', emoji: '👑', title: 'Sprite Master', desc: 'Master every sprite variant in a season', progress: (s) => best(s, 'mastered') },
 
+  // Rocket League
+  { id: 'rl-first-win', group: 'Rocket League', emoji: '🚗', title: 'Kickoff', desc: 'Win a Rocket League game', progress: (s) => [s.rl.wins, 1] },
+  { id: 'rl-hat-trick', group: 'Rocket League', emoji: '🎩', title: 'Hat Trick', desc: 'Score 3 goals in one game', progress: (s) => [s.rl.maxGoals, 3] },
+  { id: 'rl-playmaker', group: 'Rocket League', emoji: '🤝', title: 'Playmaker', desc: '3 assists in one game', progress: (s) => [s.rl.maxAssists, 3] },
+  { id: 'rl-brick-wall', group: 'Rocket League', emoji: '🧱', title: 'Brick Wall', desc: '5 saves in one game', progress: (s) => [s.rl.maxSaves, 5] },
+  { id: 'rl-mvp-10', group: 'Rocket League', emoji: '⭐', title: 'MVP Machine', desc: 'Be MVP 10 times', progress: (s) => [s.rl.mvps, 10] },
+  { id: 'rl-climber', group: 'Rocket League', emoji: '📈', title: 'Climber', desc: 'Gain 100 MMR in a ranked playlist', progress: (s) => [s.rl.bestClimb, 100] },
+  { id: 'rl-champ', group: 'Rocket League', emoji: '💜', title: 'Champion', desc: 'Reach Champion I in any ranked playlist', progress: (s) => rankGoal(s, 'champ') },
+  { id: 'rl-gc', group: 'Rocket League', emoji: '❤️‍🔥', title: 'Grand Champion', desc: 'Reach Grand Champion I in any ranked playlist', progress: (s) => rankGoal(s, 'gc') },
+
   // Squad
   { id: 'bounty-5', group: 'Squad', emoji: '🤠', title: 'Bounty Hunter', desc: 'Claim 5 bounties', progress: (s) => [s.squad.claimed, 5] },
   { id: 'quoted-5', group: 'Squad', emoji: '💬', title: 'Quotable', desc: 'Get quoted 5 times', progress: (s) => [s.squad.quoted, 5] },
@@ -41,17 +52,30 @@ const best = (s, key) => {
   const b = s.sprites.best[key]
   return b ? [b.owned, b.total] : [0, 1]
 }
+/** [peak MMR, rank cutoff] in the ranked playlist closest to reaching that rank. */
+const RANK_INDEX = { champ: 15, gc: 18 }
+const rankGoal = (s, key) => {
+  let best = null
+  for (const pl of RANKED_PLAYLISTS) {
+    const cutoff = rankBands(pl.value)[RANK_INDEX[key]].start
+    const peak = s.rl.peaks[pl.value] ?? 0
+    if (!best || peak / cutoff > best[0] / best[1]) best = [peak, cutoff]
+  }
+  return best
+}
+
 const SPRITE_KEYS = ['all', 'mastered', 'Normal', 'Cursed', 'Fortune']
 
 const emptyStats = () => ({
   ow: { games: 0, wins: 0, bestStreak: 0, maxElims: 0, maxDamage: 0, maxHealing: 0, maxMitigation: 0, heroes: 0 },
   fn: { games: 0, wins: 0, maxKills: 0, soloWins: 0, kills: 0 },
+  rl: { games: 0, wins: 0, maxGoals: 0, maxAssists: 0, maxSaves: 0, mvps: 0, bestClimb: 0, peaks: {} },
   sprites: { ticks: 0, best: {} }, // best[key] = { owned, total } for the season closest to complete
   squad: { claimed: 0, quoted: 0, bestQuoteFires: 0 },
 })
 
 /** Build per-player stats from all the raw data. Returns { [userId]: stats }. */
-export function buildPlayerStats({ profiles, owMatches, fnMatches, bounties, quotes, sprites, collection }) {
+export function buildPlayerStats({ profiles, owMatches, fnMatches, rlMatches = [], bounties, quotes, sprites, collection }) {
   const stats = Object.fromEntries(profiles.map((p) => [p.id, emptyStats()]))
   const get = (id) => (stats[id] ??= emptyStats())
 
@@ -85,6 +109,26 @@ export function buildPlayerStats({ profiles, owMatches, fnMatches, bounties, quo
       if (m.won) {
         f.wins += 1
         if (m.team_size === 1) f.soloWins += 1
+      }
+    }
+  }
+
+  // Rocket League. Climb = best rise above the lowest MMR logged before it, per playlist.
+  const lowest = {}
+  for (const m of [...rlMatches].reverse()) {
+    for (const s of m.rl_match_stats) {
+      const r = get(s.player_id).rl
+      r.games += 1
+      if (m.won) r.wins += 1
+      r.maxGoals = Math.max(r.maxGoals, s.goals ?? 0)
+      r.maxAssists = Math.max(r.maxAssists, s.assists ?? 0)
+      r.maxSaves = Math.max(r.maxSaves, s.saves ?? 0)
+      if (s.mvp) r.mvps += 1
+      if (m.ranked && s.mmr != null) {
+        r.peaks[m.team_size] = Math.max(r.peaks[m.team_size] ?? 0, s.mmr)
+        const k = `${s.player_id}|${m.team_size}`
+        lowest[k] = Math.min(lowest[k] ?? s.mmr, s.mmr)
+        r.bestClimb = Math.max(r.bestClimb, s.mmr - lowest[k])
       }
     }
   }

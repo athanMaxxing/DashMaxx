@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Database, RefreshCw, ShieldAlert, Trash2 } f
 import { supabase } from '../lib/supabase'
 import { MATCHES_CHANGED_EVENT } from '../lib/overwatch'
 import { FN_MATCHES_CHANGED_EVENT } from '../lib/fortnite'
+import { playlistLabel, RL_MATCHES_CHANGED_EVENT } from '../lib/rocketleague'
 import { BOUNTIES_CHANGED_EVENT } from '../lib/time'
 import { useSquadData } from '../context/SquadDataContext'
 import GadgetCard from '../components/GadgetCard'
@@ -33,6 +34,16 @@ const DATASETS = [
     describe: (r) => `${r.mode} · ${['', 'Solo', 'Duos', 'Trios', 'Squads'][r.team_size] ?? ''} · ${r.won ? 'Win' : 'Loss'}`,
     when: (r) => r.created_at,
     event: FN_MATCHES_CHANGED_EVENT,
+  },
+  {
+    table: 'rl_matches',
+    label: 'Rocket League matches',
+    note: 'Also removes their player stats and MMR.',
+    select: 'id, won, ranked, team_size, our_goals, their_goals, created_at',
+    pk: ['id'],
+    describe: (r) => `${r.ranked ? 'Ranked' : 'Casual'} ${playlistLabel(r.team_size)} · ${r.our_goals}–${r.their_goals} ${r.won ? 'Win' : 'Loss'}`,
+    when: (r) => r.created_at,
+    event: RL_MATCHES_CHANGED_EVENT,
   },
   {
     table: 'events',

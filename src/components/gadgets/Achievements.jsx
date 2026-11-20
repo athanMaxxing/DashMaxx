@@ -6,6 +6,7 @@ import { buildPlayerStats, evaluate } from '../../lib/achievements'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
 import { useFortniteData } from '../../context/FortniteDataContext'
+import { useRocketLeagueData } from '../../context/RocketLeagueDataContext'
 import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 import Avatar from '../Avatar'
 
@@ -16,6 +17,7 @@ export default function Achievements() {
   const { user } = useAuth()
   const { profiles, matches: owMatches, loading: owLoading } = useSquadData()
   const { matches: fnMatches, loading: fnLoading } = useFortniteData()
+  const { matches: rlMatches, loading: rlLoading } = useRocketLeagueData()
   const [extra, setExtra] = useState(null) // bounties, quotes, sprites, collection
   const [error, setError] = useState('')
   const [viewing, setViewing] = useState(user.id)
@@ -39,9 +41,9 @@ export default function Achievements() {
 
   const results = useMemo(() => {
     if (!extra) return null
-    const stats = buildPlayerStats({ profiles, owMatches, fnMatches, ...extra })
+    const stats = buildPlayerStats({ profiles, owMatches, fnMatches, rlMatches, ...extra })
     return Object.fromEntries(profiles.map((p) => [p.id, evaluate(stats[p.id])]))
-  }, [extra, profiles, owMatches, fnMatches])
+  }, [extra, profiles, owMatches, fnMatches, rlMatches])
 
   const ranking = useMemo(
     () =>
@@ -61,7 +63,7 @@ export default function Achievements() {
     <GadgetCard title="Achievements" icon={Medal}>
       {error ? (
         <GadgetMessage tone="error">{error}</GadgetMessage>
-      ) : !results || owLoading || fnLoading ? (
+      ) : !results || owLoading || fnLoading || rlLoading ? (
         <GadgetSkeleton rows={5} />
       ) : (
         <>
