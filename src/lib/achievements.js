@@ -23,7 +23,11 @@ export const ACHIEVEMENTS = [
   { id: 'fn-solo-win', group: 'Fortnite', emoji: '🐺', title: 'Lone Wolf', desc: 'Win a Solo game', progress: (s) => [s.fn.soloWins, 1] },
   { id: 'fn-100-kills', group: 'Fortnite', emoji: '💀', title: 'Century', desc: '100 Fortnite kills in total', progress: (s) => [s.fn.kills, 100] },
   { id: 'fn-sprites-25', group: 'Fortnite', emoji: '✨', title: 'Sprite Hunter', desc: 'Collect 25 sprite variants', progress: (s) => [s.sprites.ticks, 25] },
-  { id: 'fn-sprites-all', group: 'Fortnite', emoji: '🌈', title: "Gotta Catch 'Em All", desc: 'Collect every sprite variant in a season', progress: (s) => [s.sprites.bestOwned, s.sprites.bestTotal || 1] },
+  { id: 'fn-sprites-all', group: 'Fortnite', emoji: '🌈', title: "Gotta Catch 'Em All", desc: 'Collect every sprite variant in a season', progress: (s) => best(s, 'all') },
+  { id: 'fn-sprites-normal', group: 'Fortnite', emoji: '🟢', title: 'Back to Basics', desc: 'Collect every Normal sprite in a season', progress: (s) => best(s, 'Normal') },
+  { id: 'fn-sprites-cursed', group: 'Fortnite', emoji: '😈', title: 'Cursed Collector', desc: 'Collect every Cursed sprite in a season', progress: (s) => best(s, 'Cursed') },
+  { id: 'fn-sprites-fortune', group: 'Fortnite', emoji: '🍀', title: 'Fortune Finder', desc: 'Collect every Fortune sprite in a season', progress: (s) => best(s, 'Fortune') },
+  { id: 'fn-sprites-mastered', group: 'Fortnite', emoji: '👑', title: 'Sprite Master', desc: 'Master every sprite variant in a season', progress: (s) => best(s, 'mastered') },
 
   // Squad
   { id: 'bounty-5', group: 'Squad', emoji: '🤠', title: 'Bounty Hunter', desc: 'Claim 5 bounties', progress: (s) => [s.squad.claimed, 5] },
@@ -32,10 +36,17 @@ export const ACHIEVEMENTS = [
   { id: 'all-rounder', group: 'Squad', emoji: '🎮', title: 'All-Rounder', desc: 'Log games in both Overwatch and Fortnite', progress: (s) => [(s.ow.games > 0) + (s.fn.games > 0), 2] },
 ]
 
+/** [owned, total] for the season closest to complete in one sprite category. */
+const best = (s, key) => {
+  const b = s.sprites.best[key]
+  return b ? [b.owned, b.total] : [0, 1]
+}
+const SPRITE_KEYS = ['all', 'mastered', 'Normal', 'Cursed', 'Fortune']
+
 const emptyStats = () => ({
   ow: { games: 0, wins: 0, bestStreak: 0, maxElims: 0, maxDamage: 0, maxHealing: 0, maxMitigation: 0, heroes: 0 },
   fn: { games: 0, wins: 0, maxKills: 0, soloWins: 0, kills: 0 },
-  sprites: { ticks: 0, bestOwned: 0, bestTotal: 0 }, // best = the season closest to complete
+  sprites: { ticks: 0, best: {} }, // best[key] = { owned, total } for the season closest to complete
   squad: { claimed: 0, quoted: 0, bestQuoteFires: 0 },
 })
 
@@ -78,27 +89,33 @@ export function buildPlayerStats({ profiles, owMatches, fnMatches, bounties, quo
     }
   }
 
-  // Sprites: total ticks + the season closest to complete (real counts, so it shows e.g. 38/42).
-  const seasonTotals = {}
-  const spriteSeason = {}
+  // Sprites: total ticks + per category (all / mastered / each variant) the season closest to complete.
+  const totals = {} // `${key}|${season}` -> variants available
+  const spriteById = {}
   for (const sp of sprites) {
-    seasonTotals[sp.season] = (seasonTotals[sp.season] ?? 0) + sp.variants.length
-    spriteSeason[sp.id] = sp.season
+    spriteById[sp.id] = sp
+    for (const v of sp.variants) {
+      for (const key of ['all', 'mastered', v]) totals[`${key}|${sp.season}`] = (totals[`${key}|${sp.season}`] ?? 0) + 1
+    }
   }
-  const perUserSeason = {}
+  const counts = {} // `${uid}|${key}|${season}` -> owned
   for (const c of collection) {
     get(c.user_id).sprites.ticks += 1
-    const season = spriteSeason[c.sprite_id]
-    if (!season) continue
-    const key = `${c.user_id}|${season}`
-    perUserSeason[key] = (perUserSeason[key] ?? 0) + 1
+    const sp = spriteById[c.sprite_id]
+    if (!sp || !sp.variants.includes(c.variant)) continue
+    for (const key of ['all', c.variant, ...(c.mastered ? ['mastered'] : [])]) {
+      const k = `${c.user_id}|${key}|${sp.season}`
+      counts[k] = (counts[k] ?? 0) + 1
+    }
   }
-  for (const [key, n] of Object.entries(perUserSeason)) {
-    const [uid, season] = key.split('|')
-    const total = seasonTotals[season]
-    const sp = get(uid).sprites
-    const better = !sp.bestTotal || n / total > sp.bestOwned / sp.bestTotal || (n / total === sp.bestOwned / sp.bestTotal && total > sp.bestTotal)
-    if (better) Object.assign(sp, { bestOwned: n, bestTotal: total })
+  for (const [k, owned] of Object.entries(counts)) {
+    const [uid, key, season] = k.split('|')
+    if (!SPRITE_KEYS.includes(key)) continue
+    const total = totals[`${key}|${season}`]
+    const cur = get(uid).sprites.best[key]
+    if (!cur || owned / total > cur.owned / cur.total || (owned / total === cur.owned / cur.total && total > cur.total)) {
+      get(uid).sprites.best[key] = { owned, total }
+    }
   }
 
   // Squad

@@ -25,7 +25,7 @@ export default function Achievements() {
       supabase.from('squad_bounties').select('claimed_by'),
       supabase.from('quotes').select('said_by, quote_likes ( user_id )'),
       supabase.from('fortnite_sprites').select('id, season, variants'),
-      supabase.from('sprite_collection').select('user_id, sprite_id'),
+      supabase.from('sprite_collection').select('user_id, sprite_id, variant, mastered'),
     ])
     const err = b.error || q.error || sp.error || c.error
     if (err) setError(err.message)

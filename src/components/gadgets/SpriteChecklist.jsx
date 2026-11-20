@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, Sparkles, Target, X } from 'lucide-react'
+import { Crown, Plus, Sparkles, Target, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useRealtime } from '../../lib/useRealtime'
 import { BOUNTIES_CHANGED_EVENT } from '../../lib/time'
@@ -23,7 +23,7 @@ export default function SpriteChecklist() {
   const { user } = useAuth()
   const { profiles } = useSquadData()
   const [sprites, setSprites] = useState([])
-  const [owned, setOwned] = useState([]) // { user_id, sprite_id, variant }
+  const [owned, setOwned] = useState([]) // { user_id, sprite_id, variant, mastered }
   const [season, setSeason] = useState('')
   const [viewing, setViewing] = useState(user.id)
   const [missingOnly, setMissingOnly] = useState(false)
@@ -35,7 +35,7 @@ export default function SpriteChecklist() {
   const load = useCallback(async () => {
     const [spritesRes, ownedRes] = await Promise.all([
       supabase.from('fortnite_sprites').select('id, name, season, rarity, variants, how_to_get, created_at'),
-      supabase.from('sprite_collection').select('user_id, sprite_id, variant'),
+      supabase.from('sprite_collection').select('user_id, sprite_id, variant, mastered'),
     ])
     if (spritesRes.error || ownedRes.error) setError((spritesRes.error || ownedRes.error).message)
     else {
@@ -71,8 +71,10 @@ export default function SpriteChecklist() {
     [sprites, activeSeason],
   )
 
-  const ownedSet = useMemo(() => new Set(owned.map((o) => `${o.user_id}|${o.sprite_id}|${o.variant}`)), [owned])
-  const has = (uid, spriteId, variant) => ownedSet.has(`${uid}|${spriteId}|${variant}`)
+  // key -> mastered (true/false); missing key = not collected.
+  const ownedMap = useMemo(() => new Map(owned.map((o) => [`${o.user_id}|${o.sprite_id}|${o.variant}`, Boolean(o.mastered)])), [owned])
+  const has = (uid, spriteId, variant) => ownedMap.has(`${uid}|${spriteId}|${variant}`)
+  const isMastered = (uid, spriteId, variant) => ownedMap.get(`${uid}|${spriteId}|${variant}`) === true
 
   const total = seasonSprites.reduce((n, s) => n + s.variants.length, 0)
   const progress = useMemo(
@@ -80,36 +82,35 @@ export default function SpriteChecklist() {
       profiles
         .map((p) => ({
           ...p,
-          count: seasonSprites.reduce(
-            (n, s) => n + s.variants.filter((v) => ownedSet.has(`${p.id}|${s.id}|${v}`)).length,
-            0,
-          ),
+          count: seasonSprites.reduce((n, s) => n + s.variants.filter((v) => ownedMap.has(`${p.id}|${s.id}|${v}`)).length, 0),
+          mastered: seasonSprites.reduce((n, s) => n + s.variants.filter((v) => ownedMap.get(`${p.id}|${s.id}|${v}`) === true).length, 0),
         }))
-        .sort((a, b) => b.count - a.count),
-    [profiles, seasonSprites, ownedSet],
+        .sort((a, b) => b.count - a.count || b.mastered - a.mastered),
+    [profiles, seasonSprites, ownedMap],
   )
 
+  /** Tap cycles: not collected → collected → mastered → not collected. */
   async function toggle(sprite, variant) {
     if (viewing !== user.id) return
     setError('')
-    const row = { user_id: user.id, sprite_id: sprite.id, variant }
-    if (has(user.id, sprite.id, variant)) {
-      setOwned((prev) => prev.filter((o) => !(o.user_id === user.id && o.sprite_id === sprite.id && o.variant === variant)))
-      const { error: err } = await supabase
-        .from('sprite_collection')
-        .delete()
-        .match(row)
-      if (err) {
-        setOwned((prev) => [...prev, row])
-        setError(err.message)
-      }
+    const match = { user_id: user.id, sprite_id: sprite.id, variant }
+    const isRow = (o) => o.user_id === user.id && o.sprite_id === sprite.id && o.variant === variant
+    const before = owned
+    let req
+    if (!has(user.id, sprite.id, variant)) {
+      setOwned((prev) => [...prev, { ...match, mastered: false }])
+      req = supabase.from('sprite_collection').insert(match)
+    } else if (!isMastered(user.id, sprite.id, variant)) {
+      setOwned((prev) => prev.map((o) => (isRow(o) ? { ...o, mastered: true } : o)))
+      req = supabase.from('sprite_collection').update({ mastered: true }).match(match)
     } else {
-      setOwned((prev) => [...prev, row])
-      const { error: err } = await supabase.from('sprite_collection').insert(row)
-      if (err) {
-        setOwned((prev) => prev.filter((o) => o !== row))
-        setError(err.message)
-      }
+      setOwned((prev) => prev.filter((o) => !isRow(o)))
+      req = supabase.from('sprite_collection').delete().match(match)
+    }
+    const { error: err } = await req
+    if (err) {
+      setOwned(before)
+      setError(err.message)
     }
   }
 
@@ -184,6 +185,13 @@ export default function SpriteChecklist() {
                   style={{ width: `${(p.count / total) * 100}%` }}
                 />
               </div>
+              <span className="w-10 text-right tabular-nums text-amber-300/80" title="Mastered">
+                {p.mastered > 0 && (
+                  <>
+                    <Crown className="mb-0.5 inline h-3 w-3" /> {p.mastered}
+                  </>
+                )}
+              </span>
               <span className="w-12 text-right tabular-nums text-gray-400">
                 {p.count}/{total}
               </span>
@@ -205,10 +213,11 @@ export default function SpriteChecklist() {
             const missing = s.variants.filter((v) => !has(viewing, s.id, v))
             if (missingOnly && missing.length === 0) return null
             const complete = missing.length === 0
+            const allMastered = s.variants.every((v) => isMastered(viewing, s.id, v))
             return (
               <li
                 key={s.id}
-                className={`rounded-md border-l-2 bg-gray-950/50 px-3 py-2 ${RARITY_STYLE[s.rarity] ?? RARITY_STYLE.common} ${complete ? 'opacity-60' : ''}`}
+                className={`rounded-md border-l-2 bg-gray-950/50 px-3 py-2 ${RARITY_STYLE[s.rarity] ?? RARITY_STYLE.common} ${allMastered ? 'opacity-60' : ''}`}
               >
                 <div className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate text-sm font-medium" title={s.how_to_get ?? ''}>
@@ -228,18 +237,21 @@ export default function SpriteChecklist() {
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {s.variants.map((v) => {
                     const got = has(viewing, s.id, v)
+                    const mastered = got && isMastered(viewing, s.id, v)
                     return (
                       <button
                         key={v}
                         onClick={() => toggle(s, v)}
                         disabled={!isMe}
                         className={`rounded-full border px-2 py-0.5 text-[11px] transition disabled:cursor-default ${
-                          got
+                          mastered
+                            ? 'border-amber-400 bg-amber-400/20 font-semibold text-amber-200'
+                            : got
                             ? 'border-green-600 bg-green-500/20 text-green-300'
                             : 'border-gray-700 text-gray-500 enabled:hover:border-gray-500'
                         }`}
                       >
-                        {got ? '✓ ' : ''}
+                        {mastered ? <Crown className="mb-0.5 mr-1 inline h-3 w-3" /> : got ? '✓ ' : ''}
                         {v}
                       </button>
                     )
@@ -251,7 +263,9 @@ export default function SpriteChecklist() {
         </ul>
       )}
       {!isMe && <p className="mt-2 text-[11px] text-gray-600">Viewing {viewingName}&apos;s collection (read-only).</p>}
-      <p className="mt-2 text-[11px] text-gray-600">Sprite list is community-sourced; anyone can add new ones.</p>
+      <p className="mt-2 text-[11px] text-gray-600">
+        Tap a variant: collected ✓ → mastered 👑 → off. Sprite list is community-sourced; anyone can add new ones.
+      </p>
     </GadgetCard>
   )
 }
