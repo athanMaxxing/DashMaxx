@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import { Gamepad2, LogOut, ShieldCheck } from 'lucide-react'
+import { LogOut, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Avatar from './Avatar'
 import ProfileSettings from './ProfileSettings'
@@ -15,9 +15,7 @@ export default function DashboardLayout() {
       <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-gray-950/70 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-3 px-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-glow">
-              <Gamepad2 className="h-5 w-5 text-white" />
-            </div>
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="DashMaxx" className="h-9 w-9 rounded-full shadow-glow" />
             <span className="hidden font-display text-xl font-bold tracking-tight min-[400px]:inline">
               Dash<span className="bg-gradient-to-r from-indigo-300 to-fuchsia-300 bg-clip-text text-transparent">Maxx</span>
             </span>

@@ -10,7 +10,7 @@ export default defineConfig({
     // Makes the site installable as a phone/desktop app ("Add to Home Screen").
     VitePWA({
       registerType: 'autoUpdate', // new deploys update the installed app automatically
-      includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon-180x180.png'],
+      includeAssets: ['favicon.ico', 'logo.png', 'apple-touch-icon-180x180.png'],
       manifest: {
         name: 'DashMaxx',
         short_name: 'DashMaxx',

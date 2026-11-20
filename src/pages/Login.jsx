@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarDays, Crosshair, Gamepad2, LogIn, Swords, Trophy, UserPlus } from 'lucide-react'
+import { CalendarDays, Crosshair, LogIn, Swords, Trophy, UserPlus } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import InstallApp from '../components/InstallApp'
 
@@ -64,9 +64,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center px-4 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))]">
       <div className="grid w-full max-w-4xl items-center gap-10 md:grid-cols-2">
         <div className="hidden md:block">
-          <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-glow">
-            <Gamepad2 className="h-7 w-7 text-white" />
-          </div>
+          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" className="mb-6 h-14 w-14 rounded-full shadow-glow" />
           <h1 className="font-display text-5xl font-bold leading-tight tracking-tight">
             Dash
             <span className="bg-gradient-to-r from-indigo-300 via-violet-300 to-fuchsia-300 bg-clip-text text-transparent">Maxx</span>
@@ -86,9 +84,7 @@ export default function Login() {
 
         <div className="mx-auto w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center gap-2 text-center md:hidden">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-glow">
-              <Gamepad2 className="h-6 w-6 text-white" />
-            </div>
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" className="h-12 w-12 rounded-full shadow-glow" />
             <h1 className="font-display text-3xl font-bold tracking-tight">DashMaxx</h1>
             <p className="text-sm text-gray-400">The squad&apos;s command center.</p>
           </div>
