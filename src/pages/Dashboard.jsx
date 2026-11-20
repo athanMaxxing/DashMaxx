@@ -35,6 +35,7 @@ const FnMatchTracker = g(() => import('../components/gadgets/FnMatchTracker'))
 const FnLeaderboard = g(() => import('../components/gadgets/FnLeaderboard'))
 const FnSessionRecap = g(() => import('../components/gadgets/FnSessionRecap'))
 const FnRecords = g(() => import('../components/gadgets/FnRecords'))
+const ShopTimer = g(() => import('../components/gadgets/ShopTimer'))
 const SpriteChecklist = g(() => import('../components/gadgets/SpriteChecklist'))
 const QuoteWall = g(() => import('../components/gadgets/QuoteWall'))
 const BountyBoard = g(() => import('../components/gadgets/BountyBoard'))
@@ -106,6 +107,7 @@ const SECTIONS = [
       { id: 'fn-leaderboard', title: 'Fortnite Leaderboard', Component: FnLeaderboard, span: 'xl:col-span-2' },
       { id: 'fn-session', title: 'Session Recap', Component: FnSessionRecap },
       { id: 'fn-records', title: 'Records', Component: FnRecords },
+      { id: 'fn-shop', title: 'Item Shop Refresh', Component: ShopTimer },
       { id: 'sprites', title: 'Sprite Checklist', Component: SpriteChecklist },
     ],
   },
