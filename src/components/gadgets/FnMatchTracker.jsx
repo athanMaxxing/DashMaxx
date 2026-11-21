@@ -24,6 +24,17 @@ export default function FnMatchTracker() {
   }
   const [together, setTogether] = useState([])
 
+  // New games start from your last game's squad (same players + team size), kills blank.
+  const lastGame = useMemo(
+    () => matches.find((m) => m.fn_match_stats?.some((s) => s.player_id === user.id)) ?? matches[0],
+    [matches, user.id],
+  )
+  const defaultPlayers = useMemo(() => {
+    const ids = (lastGame?.fn_match_stats ?? []).map((s) => s.player_id).filter((id) => profiles.some((p) => p.id === id))
+    if (!ids.includes(user.id)) ids.unshift(user.id)
+    return ids.slice(0, Math.max(lastGame?.team_size ?? 4, 1))
+  }, [lastGame, profiles, user.id])
+
   const shown = useMemo(() => fnPlayedTogether(filteredMatches, together), [filteredMatches, together])
   const wins = shown.filter((m) => m.won).length
 
@@ -58,7 +69,8 @@ export default function FnMatchTracker() {
           profiles={profiles}
           currentUserId={user.id}
           defaultMode={lastMode || 'Build'}
-          defaultTeamSize={matches[0]?.team_size ?? 4}
+          defaultTeamSize={lastGame?.team_size ?? 4}
+          defaultPlayers={defaultPlayers}
           onCancel={closeForm}
           onSaved={() => {
             toast.success(editing ? 'Game updated' : 'Game saved')
@@ -160,7 +172,7 @@ function Toggle({ label, checked, onChange, disabled = false }) {
   )
 }
 
-function FnMatchForm({ initial, profiles, currentUserId, defaultMode, defaultTeamSize, onSaved, onCancel }) {
+function FnMatchForm({ initial, profiles, currentUserId, defaultMode, defaultTeamSize, defaultPlayers, onSaved, onCancel }) {
   const [won, setWon] = useState(initial?.won ?? false)
   const [mode, setMode] = useState(initial?.mode ?? defaultMode)
   const [teamSize, setTeamSize] = useState(initial?.team_size ?? defaultTeamSize)
@@ -169,7 +181,7 @@ function FnMatchForm({ initial, profiles, currentUserId, defaultMode, defaultTea
   const [players, setPlayers] = useState(() =>
     initial?.fn_match_stats?.length
       ? initial.fn_match_stats.map((s) => ({ player_id: s.player_id, kills: String(s.kills ?? '') }))
-      : [{ player_id: currentUserId, kills: '' }],
+      : (defaultPlayers?.length ? defaultPlayers : [currentUserId]).map((id) => ({ player_id: id, kills: '' })),
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
