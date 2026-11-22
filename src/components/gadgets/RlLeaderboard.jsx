@@ -16,7 +16,6 @@ const COLUMNS = [
   { key: 'gpg', label: 'Goals/g', fmt: (v) => v.toFixed(1) },
   { key: 'apg', label: 'Assists/g', fmt: (v) => v.toFixed(1) },
   { key: 'spg', label: 'Saves/g', fmt: (v) => v.toFixed(1) },
-  { key: 'ppg', label: 'Pts/g', fmt: (v) => Math.round(v) },
   { key: 'mvps', label: 'MVPs', fmt: (v) => v },
 ]
 
@@ -61,13 +60,12 @@ export default function RlLeaderboard() {
     for (const m of scoped) {
       for (const s of m.rl_match_stats) {
         if (only && !only.has(s.player_id)) continue
-        const p = by.get(s.player_id) ?? { id: s.player_id, username: s.profiles?.username ?? '?', games: 0, wins: 0, goals: 0, assists: 0, saves: 0, score: 0, mvps: 0 }
+        const p = by.get(s.player_id) ?? { id: s.player_id, username: s.profiles?.username ?? '?', games: 0, wins: 0, goals: 0, assists: 0, saves: 0, mvps: 0 }
         p.games += 1
         if (m.won) p.wins += 1
         p.goals += s.goals
         p.assists += s.assists
         p.saves += s.saves
-        p.score += s.score
         if (s.mvp) p.mvps += 1
         by.set(s.player_id, p)
       }
@@ -78,7 +76,6 @@ export default function RlLeaderboard() {
       gpg: p.goals / p.games,
       apg: p.assists / p.games,
       spg: p.saves / p.games,
-      ppg: p.score / p.games,
     }))
   }, [scoped, together])
 

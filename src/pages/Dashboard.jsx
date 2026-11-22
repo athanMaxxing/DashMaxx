@@ -11,6 +11,7 @@ import GadgetCustomizer from '../components/GadgetCustomizer'
 import OwFilterBar from '../components/OwFilterBar'
 import FnFilterBar from '../components/FnFilterBar'
 import RlFilterBar from '../components/RlFilterBar'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 /*
  * Every gadget is loaded on demand (its own JS chunk), so the first screen
@@ -176,11 +177,13 @@ function Section({ section, gadgets }) {
       <section className="space-y-4">
         <SectionHeader section={section} />
         <div className={GRID}>
-          {gadgets.map(({ id, Component, span }) => (
+          {gadgets.map(({ id, title, Component, span }) => (
             <div key={id} className={`min-w-0 ${span ?? ''}`}>
-              <Suspense fallback={<CardSkeleton />}>
-                <Component />
-              </Suspense>
+              <ErrorBoundary title={title}>
+                <Suspense fallback={<CardSkeleton />}>
+                  <Component />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           ))}
         </div>
@@ -208,6 +211,7 @@ export default function Dashboard() {
   const active = tabs.some((t) => t.id === requested) ? requested : tabs[0]?.id
   const setTab = (id) => {
     setParams(id === tabs[0]?.id ? {} : { tab: id }, { replace: true })
+    setCustomizing(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -308,9 +312,11 @@ export default function Dashboard() {
 
           {active === 'admin' ? (
             <AccentContext.Provider value="rose">
-              <Suspense fallback={<CardSkeleton />}>
-                <AdminPanel />
-              </Suspense>
+              <ErrorBoundary title="Admin">
+                <Suspense fallback={<CardSkeleton />}>
+                  <AdminPanel />
+                </Suspense>
+              </ErrorBoundary>
             </AccentContext.Provider>
           ) : !section ? (
             <div className="flex flex-col items-center gap-3 py-20 text-center text-gray-500">

@@ -29,7 +29,7 @@ function useMmrDeltas(matches) {
   }, [matches])
 }
 
-/** Log Rocket League games (ranked or not, playlist, score, per-player stats, MMR) and browse history. */
+/** Log Rocket League games (ranked or not, playlist, final score, goals/assists/saves, MMR) and browse history. */
 export default function RlMatchTracker() {
   const { user, profile } = useAuth()
   const toast = useToast()
@@ -147,7 +147,7 @@ export default function RlMatchTracker() {
               </div>
               <ul className="mt-1.5 space-y-1 pl-14 text-xs text-gray-400">
                 {[...m.rl_match_stats]
-                  .sort((a, b) => b.score - a.score)
+                  .sort((a, b) => b.mvp - a.mvp || b.goals - a.goals || b.assists - a.assists || b.saves - a.saves)
                   .map((s) => (
                     <li key={s.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="font-medium text-gray-200">{s.profiles?.username ?? '?'}</span>
@@ -157,7 +157,7 @@ export default function RlMatchTracker() {
                         </span>
                       )}
                       <span className="tabular-nums">
-                        {s.goals}G {s.assists}A {s.saves}S · {s.score} pts
+                        {s.goals}G {s.assists}A {s.saves}S
                       </span>
                       {m.ranked && s.mmr != null && (
                         <span className="inline-flex items-center gap-1">
@@ -181,10 +181,9 @@ const STAT_FIELDS = [
   ['goals', 'Goals'],
   ['assists', 'Assists'],
   ['saves', 'Saves'],
-  ['score', 'Points'],
 ]
 
-const blankPlayer = (player_id = '', mmr = '') => ({ player_id, goals: '', assists: '', saves: '', score: '', mvp: false, mmr: String(mmr) })
+const blankPlayer = (player_id = '', mmr = '') => ({ player_id, goals: '', assists: '', saves: '', mvp: false, mmr: String(mmr) })
 
 function RlMatchForm({ initial, matches, profiles, currentUserId, defaults, onSaved, onCancel }) {
   const [ranked, setRanked] = useState(initial?.ranked ?? defaults?.ranked ?? true)
@@ -200,7 +199,6 @@ function RlMatchForm({ initial, matches, profiles, currentUserId, defaults, onSa
         goals: String(s.goals),
         assists: String(s.assists),
         saves: String(s.saves),
-        score: String(s.score),
         mvp: s.mvp,
         mmr: s.mmr == null ? '' : String(s.mmr),
       }))
@@ -285,7 +283,6 @@ function RlMatchForm({ initial, matches, profiles, currentUserId, defaults, onSa
         goals: Number(p.goals) || 0,
         assists: Number(p.assists) || 0,
         saves: Number(p.saves) || 0,
-        score: Number(p.score) || 0,
         mvp: won && p.mvp,
         mmr: showMmr && p.mmr !== '' ? Number(p.mmr) : null,
       }))
@@ -417,7 +414,7 @@ function RlMatchForm({ initial, matches, profiles, currentUserId, defaults, onSa
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
-              <div className={`grid gap-1.5 ${showMmr ? 'grid-cols-4 sm:grid-cols-5' : 'grid-cols-4'}`}>
+              <div className={`grid gap-1.5 ${showMmr ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-3'}`}>
                 {STAT_FIELDS.map(([key, label]) => (
                   <label key={key} className="block">
                     <span className="mb-0.5 block text-[10px] uppercase tracking-wide text-gray-500">{label}</span>
@@ -433,7 +430,7 @@ function RlMatchForm({ initial, matches, profiles, currentUserId, defaults, onSa
                   </label>
                 ))}
                 {showMmr && (
-                  <label className="col-span-4 block sm:col-span-1">
+                  <label className="col-span-3 block sm:col-span-1">
                     <span className="mb-0.5 flex items-center justify-between text-[10px] uppercase tracking-wide text-gray-500">
                       MMR after
                       {p.mmr !== '' && prevMmr !== '' && <Delta value={Number(p.mmr) - prevMmr} className="normal-case" />}

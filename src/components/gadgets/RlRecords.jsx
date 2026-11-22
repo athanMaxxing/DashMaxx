@@ -8,7 +8,6 @@ const SINGLE = [
   ['goals', 'Most goals in a game'],
   ['assists', 'Most assists in a game'],
   ['saves', 'Most saves in a game'],
-  ['score', 'Most points in a game'],
 ]
 
 /** Streaks and best single games for Rocket League. */
