@@ -16,7 +16,7 @@ const RARITY_STYLE = {
   legendary: 'text-orange-300 border-orange-700',
   mythic: 'text-amber-200 border-amber-500',
 }
-const DEFAULT_VARIANTS = ['Normal', 'Cursed', 'Fortune']
+const DEFAULT_VARIANTS = ['Normal', 'Cursed', 'Fortune', 'Gold']
 
 /** Fortnite sprite collection tracker: shared sprite list + everyone's personal ticks. */
 export default function SpriteChecklist() {

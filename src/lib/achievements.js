@@ -28,6 +28,7 @@ export const ACHIEVEMENTS = [
   { id: 'fn-sprites-normal', group: 'Fortnite', emoji: '🟢', title: 'Back to Basics', desc: 'Collect every Normal sprite in a season', progress: (s) => best(s, 'Normal') },
   { id: 'fn-sprites-cursed', group: 'Fortnite', emoji: '😈', title: 'Cursed Collector', desc: 'Collect every Cursed sprite in a season', progress: (s) => best(s, 'Cursed') },
   { id: 'fn-sprites-fortune', group: 'Fortnite', emoji: '🍀', title: 'Fortune Finder', desc: 'Collect every Fortune sprite in a season', progress: (s) => best(s, 'Fortune') },
+  { id: 'fn-sprites-gold', group: 'Fortnite', emoji: '🪙', title: 'Liquid Gold', desc: 'Collect every Gold sprite in a season', progress: (s) => best(s, 'Gold') },
   { id: 'fn-sprites-mastered', group: 'Fortnite', emoji: '👑', title: 'Sprite Master', desc: 'Master every sprite variant in a season', progress: (s) => best(s, 'mastered') },
 
   // Rocket League
@@ -64,7 +65,7 @@ const rankGoal = (s, key) => {
   return best
 }
 
-const SPRITE_KEYS = ['all', 'mastered', 'Normal', 'Cursed', 'Fortune']
+const SPRITE_KEYS = ['all', 'mastered', 'Normal', 'Cursed', 'Fortune', 'Gold']
 
 const emptyStats = () => ({
   ow: { games: 0, wins: 0, bestStreak: 0, maxElims: 0, maxDamage: 0, maxHealing: 0, maxMitigation: 0, heroes: 0 },
