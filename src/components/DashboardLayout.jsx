@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import { LogOut, ShieldCheck } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import Avatar from './Avatar'
+import StatusMenu from './StatusMenu'
 import ProfileSettings from './ProfileSettings'
 import InstallApp from './InstallApp'
 
 export default function DashboardLayout() {
-  const { username, profile, signOut } = useAuth()
+  const { signOut } = useAuth()
   const [editingProfile, setEditingProfile] = useState(false)
 
   return (
@@ -21,15 +21,7 @@ export default function DashboardLayout() {
             </span>
           </div>
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => setEditingProfile(true)}
-              className="flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] py-1 pl-1 pr-3 transition hover:border-white/20 hover:bg-white/[0.06]"
-              title="Edit your profile"
-            >
-              <Avatar profile={profile ?? { username }} size="md" />
-              <span className="max-w-[7rem] truncate text-sm font-medium text-gray-200 sm:max-w-[10rem]">{username}</span>
-              {profile?.is_admin && <ShieldCheck className="h-4 w-4 shrink-0 text-rose-300" aria-label="Admin" />}
-            </button>
+            <StatusMenu onEditProfile={() => setEditingProfile(true)} />
             <InstallApp />
             <button onClick={signOut} className="btn-ghost shrink-0 py-1.5" title="Log out">
               <LogOut className="h-4 w-4" />

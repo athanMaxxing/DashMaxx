@@ -1,22 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Radio } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { notifySquadOnline } from '../../lib/push'
+import { isFresh, saveStatus, STATUS, STATUSES } from '../../lib/squadStatus'
 import { timeAgo } from '../../lib/time'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
 import Avatar from '../Avatar'
 import GadgetCard, { GadgetSkeleton } from '../GadgetCard'
 import { useToast } from '../Toast'
-
-const STATUSES = [
-  { value: 'online', label: 'On now', dot: 'bg-green-500', btn: 'bg-green-600 text-white' },
-  { value: 'soon', label: 'On in 15', dot: 'bg-yellow-500', btn: 'bg-yellow-500 text-gray-950' },
-  { value: 'later', label: 'Later tonight', dot: 'bg-sky-500', btn: 'bg-sky-600 text-white' },
-  { value: 'offline', label: 'Not tonight', dot: 'bg-red-500', btn: 'bg-red-600 text-white' },
-]
-const STATUS = Object.fromEntries(STATUSES.map((s) => [s.value, s]))
-const STALE_MS = 12 * 60 * 60 * 1000 // statuses older than 12h count as "no status"
 
 /** Live "who's on tonight" board, synced instantly via Supabase Realtime. */
 export default function ReadyCheck() {
@@ -62,21 +53,13 @@ export default function ReadyCheck() {
 
   async function setStatus(status) {
     setError('')
-    const row = { user_id: user.id, status, game: game.trim() || null, updated_at: new Date().toISOString() }
     const prev = statuses[user.id]
-    setStatuses((s) => ({ ...s, [user.id]: row })) // optimistic
-    const { error: err } = await supabase.from('squad_status').upsert(row, { onConflict: 'user_id' })
-    if (err) {
+    setStatuses((s) => ({ ...s, [user.id]: { user_id: user.id, status, game: game.trim() || null, updated_at: new Date().toISOString() } })) // optimistic
+    try {
+      await saveStatus(user.id, status, game, toast)
+    } catch (err) {
       setStatuses((s) => ({ ...s, [user.id]: prev }))
       setError(err.message)
-    } else if (status === 'online') {
-      // Push "<you> is on now" to the squad (the server applies a 20-min cooldown).
-      notifySquadOnline()
-        .then((r) => {
-          if (r?.sent > 0) toast.info(`Pinged ${r.sent} squad device${r.sent === 1 ? '' : 's'} 🔔`)
-          else if (r?.reason === 'cooldown') toast.info(`Squad was pinged recently. Next ping in ${r.minutesLeft} min.`)
-        })
-        .catch(() => {})
     }
   }
 
@@ -85,8 +68,7 @@ export default function ReadyCheck() {
     return profiles
       .map((p) => {
         const s = statuses[p.id]
-        const fresh = s && Date.now() - new Date(s.updated_at).getTime() < STALE_MS
-        return { ...p, s: fresh ? s : null }
+        return { ...p, s: isFresh(s) ? s : null }
       })
       .sort((a, b) => (order[a.s?.status] ?? 9) - (order[b.s?.status] ?? 9) || a.username.localeCompare(b.username))
   }, [profiles, statuses])

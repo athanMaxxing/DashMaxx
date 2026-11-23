@@ -150,6 +150,13 @@ const SECTIONS = [
   },
 ]
 
+/** Gadgets from every tab except Home, which can be pinned to Home. id -> gadget (+ its tab's accent). */
+const PINNABLE = new Map(
+  SECTIONS.filter((s) => s.id !== 'home').flatMap((s) =>
+    s.gadgets.map((x) => [x.id, { ...x, id: `pin-${x.id}`, accent: s.accent, sectionTitle: s.title }]),
+  ),
+)
+
 function SectionHeader({ section }) {
   const accent = ACCENTS[section.accent]
   const Icon = section.icon
@@ -177,15 +184,25 @@ function Section({ section, gadgets }) {
       <section className="space-y-4">
         <SectionHeader section={section} />
         <div className={GRID}>
-          {gadgets.map(({ id, title, Component, span }) => (
-            <div key={id} className={`min-w-0 ${span ?? ''}`}>
-              <ErrorBoundary title={title}>
-                <Suspense fallback={<CardSkeleton />}>
-                  <Component />
-                </Suspense>
-              </ErrorBoundary>
-            </div>
-          ))}
+          {gadgets.map(({ id, title, Component, span, accent }) => {
+            const card = (
+              <div key={id} className={`min-w-0 ${span ?? ''}`}>
+                <ErrorBoundary title={title}>
+                  <Suspense fallback={<CardSkeleton />}>
+                    <Component />
+                  </Suspense>
+                </ErrorBoundary>
+              </div>
+            )
+            // Cards pinned from another tab keep that tab's colour.
+            return accent ? (
+              <AccentContext.Provider key={id} value={accent}>
+                {card}
+              </AccentContext.Provider>
+            ) : (
+              card
+            )
+          })}
         </div>
       </section>
     </AccentContext.Provider>
@@ -195,13 +212,20 @@ function Section({ section, gadgets }) {
 export default function Dashboard() {
   const { profile } = useAuth()
   const isAdmin = Boolean(profile?.is_admin)
-  const { isVisible, setVisible, error } = useGadgetPrefs()
+  const { isVisible, setVisible, pins, isPinned, togglePin, movePin, error } = useGadgetPrefs()
   const [customizing, setCustomizing] = useState(false)
   const [params, setParams] = useSearchParams()
 
-  const sections = SECTIONS.map((s) => ({ ...s, shown: s.gadgets.filter((x) => isVisible(x.id)) })).filter(
-    (s) => s.shown.length > 0,
-  )
+  // Cards pinned to Home from other tabs, in the order the user chose.
+  const pinned = pins.map((id) => PINNABLE.get(id)).filter(Boolean)
+
+  const sections = SECTIONS.map((s) => {
+    const shown = s.gadgets.filter((x) => isVisible(x.id))
+    if (s.id !== 'home' || pinned.length === 0) return { ...s, shown }
+    // Pins go right under the Event Countdown banner (or first if it's hidden).
+    const at = shown[0]?.id === 'event' ? 1 : 0
+    return { ...s, shown: [...shown.slice(0, at), ...pinned, ...shown.slice(at)] }
+  }).filter((s) => s.shown.length > 0)
 
   const tabs = [
     ...sections.map((s) => ({ id: s.id, title: s.title, short: s.short, icon: s.icon, accent: s.accent })),
@@ -304,6 +328,10 @@ export default function Dashboard() {
               sections={SECTIONS}
               isVisible={isVisible}
               setVisible={setVisible}
+              pins={pins}
+              isPinned={isPinned}
+              togglePin={togglePin}
+              movePin={movePin}
               onClose={() => setCustomizing(false)}
               error={error}
             />

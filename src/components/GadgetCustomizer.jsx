@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Eye, EyeOff, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Eye, EyeOff, Home, Pin, PinOff, X } from 'lucide-react'
 
 /** Checkbox that also shows an "indeterminate" dash when only some children are on. */
 function TriCheckbox({ checked, indeterminate, onChange, className = '' }) {
@@ -57,8 +57,10 @@ export function GroupChips({ sections, isVisible, setVisible }) {
   )
 }
 
-export default function GadgetCustomizer({ sections, isVisible, setVisible, onClose, error }) {
+export default function GadgetCustomizer({ sections, isVisible, setVisible, pins, isPinned, togglePin, movePin, onClose, error }) {
   const allIds = sections.flatMap((s) => s.gadgets.map((g) => g.id))
+  const lookup = new Map(sections.flatMap((s) => s.gadgets.map((g) => [g.id, { ...g, section: s }])))
+  const pinned = pins.map((id) => lookup.get(id)).filter(Boolean)
 
   return (
     <div className="card animate-fade-up p-4">
@@ -75,6 +77,37 @@ export default function GadgetCustomizer({ sections, isVisible, setVisible, onCl
             <X className="h-4 w-4" />
           </button>
         </div>
+      </div>
+
+      <div className="mb-4 rounded-lg border border-indigo-500/30 bg-indigo-500/[0.06] p-3">
+        <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-100">
+          <Home className="h-4 w-4 text-indigo-300" /> Pinned to Home
+        </p>
+        {pinned.length === 0 ? (
+          <p className="text-xs text-gray-400">
+            Tap <Pin className="inline h-3 w-3" /> next to any card below to show it on your Home tab too.
+          </p>
+        ) : (
+          <ol className="space-y-1">
+            {pinned.map((g, i) => (
+              <li key={g.id} className="flex items-center gap-2 rounded bg-gray-950/50 px-2 py-1 text-sm text-gray-200">
+                <span className="w-4 text-right text-xs tabular-nums text-gray-500">{i + 1}</span>
+                <span className="min-w-0 flex-1 truncate">
+                  {g.title} <span className="text-xs text-gray-500">· {g.section.short ?? g.section.title}</span>
+                </span>
+                <button className="btn-ghost p-1" onClick={() => movePin(g.id, -1)} disabled={i === 0} title="Move up">
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+                <button className="btn-ghost p-1" onClick={() => movePin(g.id, 1)} disabled={i === pinned.length - 1} title="Move down">
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+                <button className="btn-ghost p-1 hover:text-rose-300" onClick={() => togglePin(g.id)} title="Unpin from Home">
+                  <PinOff className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ol>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -96,16 +129,28 @@ export default function GadgetCustomizer({ sections, isVisible, setVisible, onCl
               </label>
               <ul className="space-y-1">
                 {s.gadgets.map((g) => (
-                  <li key={g.id}>
-                    <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm text-gray-300 hover:bg-gray-800/50">
+                  <li key={g.id} className="flex items-center gap-1">
+                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm text-gray-300 hover:bg-gray-800/50">
                       <input
                         type="checkbox"
                         className="h-4 w-4 accent-indigo-500"
                         checked={isVisible(g.id)}
                         onChange={(e) => setVisible([g.id], e.target.checked)}
                       />
-                      {g.title}
+                      <span className="truncate">{g.title}</span>
                     </label>
+                    {s.id !== 'home' && (
+                      <button
+                        onClick={() => togglePin(g.id)}
+                        title={isPinned(g.id) ? 'Unpin from Home' : 'Pin to Home'}
+                        aria-pressed={isPinned(g.id)}
+                        className={`rounded p-1 transition ${
+                          isPinned(g.id) ? 'text-indigo-300 hover:text-indigo-200' : 'text-gray-600 hover:bg-gray-800/50 hover:text-gray-300'
+                        }`}
+                      >
+                        <Pin className={`h-3.5 w-3.5 ${isPinned(g.id) ? 'fill-current' : ''}`} />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -114,7 +159,7 @@ export default function GadgetCustomizer({ sections, isVisible, setVisible, onCl
         })}
       </div>
       {error && <p className="mt-3 text-sm text-red-400">Couldn&apos;t save: {error}</p>}
-      <p className="mt-3 text-[11px] text-gray-600">Saved to your account, so it follows you to any device.</p>
+      <p className="mt-3 text-[11px] text-gray-600">Checkboxes show or hide a card in its own tab. Pinning also puts it on Home. Saved to your account, so it follows you to any device.</p>
     </div>
   )
 }
