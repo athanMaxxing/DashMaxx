@@ -34,7 +34,7 @@ export function GroupChips({ sections, isVisible, setVisible }) {
           <button
             key={s.id}
             onClick={() => setVisible(ids, none || !all ? true : false)}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${
+            className={`flex items-center gap-1.5 para border px-3 py-1 text-xs font-medium transition ${
               none
                 ? 'border-gray-700 text-gray-500 hover:border-gray-500'
                 : all
@@ -65,7 +65,7 @@ export default function GadgetCustomizer({ sections, isVisible, setVisible, pins
   return (
     <div className="card animate-fade-up p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-200">Choose your gadgets</h3>
+        <h3 className="lbl"><span className="text-indigo-400">//</span> Choose your gadgets</h3>
         <div className="flex items-center gap-3">
           <button className="text-xs text-indigo-400 hover:underline" onClick={() => setVisible(allIds, true)}>
             Show all
@@ -79,8 +79,8 @@ export default function GadgetCustomizer({ sections, isVisible, setVisible, pins
         </div>
       </div>
 
-      <div className="mb-4 rounded-lg border border-indigo-500/30 bg-indigo-500/[0.06] p-3">
-        <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-100">
+      <div className="mb-4 border-l-2 border-indigo-400 bg-indigo-500/[0.07] p-3">
+        <p className="mb-2 flex items-center gap-2 font-display text-base font-extrabold uppercase italic text-gray-100">
           <Home className="h-4 w-4 text-indigo-300" /> Pinned to Home
         </p>
         {pinned.length === 0 ? (
@@ -115,8 +115,8 @@ export default function GadgetCustomizer({ sections, isVisible, setVisible, pins
           const ids = s.gadgets.map((g) => g.id)
           const shown = ids.filter(isVisible).length
           return (
-            <div key={s.id} className="rounded-lg border border-gray-800 bg-gray-950/50 p-3">
-              <label className="mb-2 flex cursor-pointer items-center gap-2 border-b border-gray-800 pb-2 text-sm font-semibold text-gray-100">
+            <div key={s.id} className="border border-white/[0.06] bg-gray-950/50 p-3">
+              <label className="mb-2 flex cursor-pointer items-center gap-2 border-b border-gray-800 pb-2 font-display text-base font-extrabold uppercase italic text-gray-100">
                 <TriCheckbox
                   checked={shown === ids.length}
                   indeterminate={shown > 0 && shown < ids.length}
@@ -139,7 +139,7 @@ export default function GadgetCustomizer({ sections, isVisible, setVisible, pins
                       />
                       <span className="truncate">{g.title}</span>
                     </label>
-                    {s.id !== 'home' && (
+                    {s.id !== 'home' && !g.bare && (
                       <button
                         onClick={() => togglePin(g.id)}
                         title={isPinned(g.id) ? 'Unpin from Home' : 'Pin to Home'}

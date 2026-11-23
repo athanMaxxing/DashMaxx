@@ -73,7 +73,7 @@ export default function Achievements() {
               <button
                 key={p.id}
                 onClick={() => setViewing(p.id)}
-                className={`flex shrink-0 items-center gap-2 rounded-full py-1 pl-1 pr-3 text-xs ring-1 transition ${
+                className={`flex shrink-0 items-center gap-2 para py-1 pl-1 pr-3 text-xs ring-1 transition ${
                   viewing === p.id ? 'bg-amber-500/15 text-amber-100 ring-amber-400/50' : 'text-gray-300 ring-white/10 hover:bg-white/5'
                 }`}
               >

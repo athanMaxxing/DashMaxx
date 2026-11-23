@@ -81,7 +81,7 @@ export default function ReadyCheck() {
       title="Ready Check"
       icon={Radio}
       actions={
-        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${onNow ? 'bg-green-500/15 text-green-300' : 'text-gray-500'}`}>
+        <span className={`para px-2 py-0.5 text-xs font-semibold ${onNow ? 'bg-green-500/15 text-green-300' : 'text-gray-500'}`}>
           {onNow} on now
         </span>
       }

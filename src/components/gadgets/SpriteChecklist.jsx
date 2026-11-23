@@ -243,7 +243,7 @@ export default function SpriteChecklist() {
                         key={v}
                         onClick={() => toggle(s, v)}
                         disabled={!isMe}
-                        className={`rounded-full border px-2 py-0.5 text-[11px] transition disabled:cursor-default ${
+                        className={`para border px-2 py-0.5 text-[11px] transition disabled:cursor-default ${
                           mastered
                             ? 'border-amber-400 bg-amber-400/20 font-semibold text-amber-200'
                             : got

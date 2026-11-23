@@ -205,7 +205,7 @@ export default function EventCountdown() {
           <button
             key={r.value}
             onClick={() => rsvp(r.value)}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition ${
+            className={`para px-3 py-1.5 text-sm font-medium ring-1 transition ${
               myRsvp === r.value ? r.on : 'text-gray-300 ring-white/10 hover:bg-white/5'
             }`}
           >

@@ -23,7 +23,7 @@ export default function PlayerPicker({ profiles, selected, onChange, label, icon
           return (
             <label
               key={p.id}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition ${
+              className={`flex cursor-pointer items-center gap-1.5 para border px-2.5 py-1 text-xs transition ${
                 on
                   ? 'border-indigo-500 bg-indigo-500/20 text-indigo-200'
                   : 'border-gray-700 text-gray-400 hover:border-gray-500'

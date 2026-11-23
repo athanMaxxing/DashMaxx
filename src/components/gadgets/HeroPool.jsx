@@ -68,7 +68,7 @@ export default function HeroPool() {
                 <span className="text-xs text-gray-500">{p.games} games</span>
                 {p.hot && (
                   <span
-                    className="flex items-center gap-0.5 rounded-full bg-orange-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-orange-300"
+                    className="flex items-center gap-0.5 para bg-orange-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-orange-300"
                     title={`Won ${HOT_WINS}+ of their last ${HOT_WINDOW} games`}
                   >
                     <Flame className="h-3 w-3" /> On fire

@@ -18,7 +18,7 @@ export default function RankBadge({ mmr, playlist, size = 'sm', showDivision = t
   const text = size === 'xs' ? r.short : r.name
   return (
     <span
-      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 font-semibold ring-1 ${TIER_STYLE[r.tier]} ${
+      className={`inline-flex items-center gap-1 whitespace-nowrap para px-2 py-0.5 font-semibold ring-1 ${TIER_STYLE[r.tier]} ${
         size === 'lg' ? 'text-sm' : size === 'xs' ? 'text-[10px]' : 'text-xs'
       }`}
       title={`${r.name}${r.division ? ` · Division ${r.division}` : ''} (≈ from ${mmr} MMR)`}

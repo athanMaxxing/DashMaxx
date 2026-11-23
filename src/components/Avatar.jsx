@@ -19,10 +19,11 @@ export const AVATAR_EMOJIS = [
 ]
 
 const SIZES = {
-  xs: 'h-5 w-5 text-[10px]',
-  sm: 'h-6 w-6 text-xs',
-  md: 'h-8 w-8 text-sm',
-  lg: 'h-12 w-12 text-xl',
+  xs: 'h-5 w-[22px] text-[10px]',
+  sm: 'h-6 w-[27px] text-xs',
+  md: 'h-8 w-9 text-sm',
+  lg: 'h-12 w-[54px] text-xl',
+  xl: 'h-[72px] w-20 text-3xl',
 }
 
 export default function Avatar({ profile, size = 'sm', className = '' }) {
@@ -30,7 +31,7 @@ export default function Avatar({ profile, size = 'sm', className = '' }) {
   const content = profile?.avatar_emoji || (profile?.username ?? '?').charAt(0).toUpperCase()
   return (
     <span
-      className={`inline-flex shrink-0 select-none items-center justify-center rounded-full bg-gradient-to-br font-bold leading-none text-white ${color} ${SIZES[size]} ${className}`}
+      className={`inline-flex shrink-0 select-none items-center justify-center hex bg-gradient-to-br font-display font-extrabold leading-none text-white ${color} ${SIZES[size]} ${className}`}
       aria-hidden="true"
     >
       {content}

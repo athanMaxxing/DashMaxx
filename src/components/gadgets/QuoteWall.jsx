@@ -174,7 +174,7 @@ export default function QuoteWall() {
                     )}
                     <button
                       onClick={() => toggleLike(q)}
-                      className={`flex items-center gap-1 rounded-full px-2 py-0.5 ring-1 transition ${
+                      className={`flex items-center gap-1 para px-2 py-0.5 ring-1 transition ${
                         liked ? 'bg-orange-500/20 text-orange-300 ring-orange-400/40' : 'text-gray-400 ring-white/10 hover:text-orange-300'
                       }`}
                       title={liked ? 'Un-fire' : 'Fire'}

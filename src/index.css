@@ -8,24 +8,20 @@
   }
   body {
     @apply min-h-screen bg-gray-950 font-sans text-gray-100 antialiased;
-    background-image:
-      radial-gradient(60rem 40rem at 10% -10%, rgba(99, 102, 241, 0.16), transparent 60%),
-      radial-gradient(50rem 35rem at 100% 0%, rgba(217, 70, 239, 0.1), transparent 60%),
-      radial-gradient(60rem 40rem at 50% 120%, rgba(14, 165, 233, 0.08), transparent 60%);
-    background-attachment: fixed;
   }
-  /* Faint grid behind everything. */
+  /* Slanted speed stripes in the top-right corner, behind everything. */
   body::before {
     content: '';
     position: fixed;
-    inset: 0;
+    top: -10rem;
+    right: -12rem;
+    width: 38rem;
+    height: 44rem;
     z-index: -1;
     pointer-events: none;
-    background-image:
-      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-    background-size: 48px 48px;
-    mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%);
+    background: repeating-linear-gradient(120deg, rgba(232, 121, 249, 0.055) 0 2px, transparent 2px 14px);
+    transform: skewX(-20deg);
+    mask-image: linear-gradient(200deg, black 20%, transparent 70%);
   }
   h1,
   h2,
@@ -38,27 +34,57 @@
   /* Slim scrollbars for the many scrollable gadget lists. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: #30364a transparent;
+    scrollbar-color: #2f2b3d transparent;
   }
 }
 
 @layer components {
   .input {
-    @apply w-full rounded-lg border border-white/10 bg-gray-950/70 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 transition focus:border-indigo-400/70 focus:outline-none focus:ring-2 focus:ring-indigo-500/25;
+    @apply w-full rounded-none border border-white/10 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 transition focus:border-indigo-400/70 focus:outline-none focus:ring-1 focus:ring-indigo-400/40;
   }
+
+  /* Buttons are parallelograms. --cut is how far the corners slant in. */
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+    --cut: 7px;
+    clip-path: polygon(var(--cut) 0, 100% 0, calc(100% - var(--cut)) 100%, 0 100%);
+    @apply inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-4 py-2 font-display text-sm font-bold uppercase tracking-wider transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+  }
+  .btn:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.75);
   }
   .btn-primary {
-    @apply btn bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-[0_6px_20px_-8px_rgba(99,102,241,0.9)] hover:from-indigo-400 hover:to-indigo-500;
+    @apply btn bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-500 hover:to-violet-500;
   }
   .btn-ghost {
-    @apply btn border border-white/10 bg-white/[0.02] text-gray-200 hover:border-white/20 hover:bg-white/[0.06];
+    @apply btn bg-white/[0.06] text-gray-200 hover:bg-white/[0.11];
   }
   .btn-danger {
-    @apply btn bg-gradient-to-b from-rose-500 to-rose-600 text-white hover:from-rose-400 hover:to-rose-500;
+    @apply btn bg-gradient-to-r from-rose-600 to-red-600 text-white hover:from-rose-500 hover:to-red-500;
   }
+
+  /* Panels: solid, with the top-right corner cut off. */
   .card {
-    @apply rounded-2xl border border-white/[0.07] bg-gray-900/70 shadow-card backdrop-blur-md;
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+    @apply border border-white/[0.07] bg-gray-900 shadow-card;
+  }
+
+  /* Shape helpers used by the HUD pieces. */
+  .para {
+    --cut: 8px;
+    clip-path: polygon(var(--cut) 0, 100% 0, calc(100% - var(--cut)) 100%, 0 100%);
+  }
+  .hex {
+    clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  }
+  .chev {
+    clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 50%, calc(100% - 7px) 100%, 0 100%, 7px 50%);
+  }
+  /* Small uppercase label. */
+  .lbl {
+    @apply font-display text-xs font-bold uppercase tracking-[0.16em] text-gray-400;
+  }
+  .num {
+    @apply font-mono tabular-nums;
   }
 }

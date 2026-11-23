@@ -232,7 +232,7 @@ function DatasetRow({ ds, count, usernames, open, onToggle, onChanged }) {
       <button onClick={onToggle} className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-white/[0.03]">
         <Chevron className="h-4 w-4 text-gray-500" />
         <span className="flex-1 text-sm font-medium text-gray-200">{ds.label}</span>
-        <span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-xs tabular-nums text-gray-400">
+        <span className="para bg-white/[0.05] px-2 py-0.5 text-xs tabular-nums text-gray-400">
           {count ?? '…'}
         </span>
       </button>

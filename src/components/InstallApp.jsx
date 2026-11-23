@@ -3,8 +3,11 @@ import { Download, Share, SquarePlus, X } from 'lucide-react'
 import { canPromptInstall, isIos, isStandalone, promptInstall, subscribe } from '../lib/install'
 import { useToast } from './Toast'
 
-/** Header button: installs the app (Android/desktop) or explains how (iPhone). Hidden once installed. */
-export default function InstallApp() {
+/**
+ * Installs the app (Android/desktop) or explains how (iPhone). Hidden once installed.
+ * Pass `row` (a class string) to render it as a settings row instead of a button.
+ */
+export default function InstallApp({ row = '' }) {
   const toast = useToast()
   const promptable = useSyncExternalStore(subscribe, canPromptInstall, () => false)
   const [showIosHelp, setShowIosHelp] = useState(false)
@@ -20,10 +23,17 @@ export default function InstallApp() {
 
   return (
     <>
-      <button onClick={install} className="btn-ghost shrink-0 px-2 py-1.5 sm:px-3" title="Install DashMaxx as an app">
-        <Download className="h-4 w-4" />
-        <span className="hidden sm:inline">Install app</span>
-      </button>
+      {row ? (
+        <button onClick={install} className={row}>
+          <Download className="h-[18px] w-[18px] text-indigo-400" />
+          <span className="flex-1 text-left">Install app</span>
+        </button>
+      ) : (
+        <button onClick={install} className="btn-ghost shrink-0 px-2 py-1.5 sm:px-3" title="Install DashMaxx as an app">
+          <Download className="h-4 w-4" />
+          <span className="hidden sm:inline">Install app</span>
+        </button>
+      )}
       {showIosHelp && <IosHelp onClose={() => setShowIosHelp(false)} />}
     </>
   )
