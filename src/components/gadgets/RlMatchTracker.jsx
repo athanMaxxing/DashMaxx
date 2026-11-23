@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
 import { useRocketLeagueData } from '../../context/RocketLeagueDataContext'
 import { pct } from '../../lib/fortnite'
-import { lastMmr, PLAYLISTS, playlistLabel, RL_MATCHES_CHANGED_EVENT, rlPlayedTogether } from '../../lib/rocketleague'
+import { hasTeamStats, lastMmr, PLAYLISTS, playlistLabel, RL_MATCHES_CHANGED_EVENT, rlPlayedTogether } from '../../lib/rocketleague'
 import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 import { useToast } from '../Toast'
 import PlayerPicker from '../PlayerPicker'
@@ -151,13 +151,14 @@ export default function RlMatchTracker() {
                   .map((s) => (
                     <li key={s.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="font-medium text-gray-200">{s.profiles?.username ?? '?'}</span>
-                      {s.mvp && (
+                      {s.mvp && hasTeamStats(m.team_size) && (
                         <span className="inline-flex items-center gap-0.5 font-semibold text-amber-300">
                           <Crown className="h-3 w-3" /> MVP
                         </span>
                       )}
                       <span className="tabular-nums">
-                        {s.goals}G {s.assists}A {s.saves}S
+                        {s.goals}G {hasTeamStats(m.team_size) && `${s.assists}A `}
+                        {s.saves}S
                       </span>
                       {m.ranked && s.mmr != null && (
                         <span className="inline-flex items-center gap-1">
@@ -217,6 +218,8 @@ function RlMatchForm({ initial, matches, profiles, currentUserId, defaults, onSa
   const tooMany = players.length > teamSize
   const canFill = players.length < teamSize
   const showMmr = ranked && teamSize !== 4
+  const teamStats = hasTeamStats(teamSize)
+  const statFields = teamStats ? STAT_FIELDS : STAT_FIELDS.filter(([key]) => key !== 'assists')
 
   const update = (i, patch) => setPlayers((prev) => prev.map((p, j) => (j === i ? { ...p, ...patch } : p)))
 
@@ -228,6 +231,7 @@ function RlMatchForm({ initial, matches, profiles, currentUserId, defaults, onSa
 
   function pickPlaylist(size) {
     setTeamSize(size)
+    if (!hasTeamStats(size)) setPlayers((prev) => prev.map((p) => ({ ...p, assists: '', mvp: false })))
     const isRanked = size === 4 ? false : ranked
     if (size === 4) setRanked(false)
     refillMmr(size, isRanked)
@@ -281,9 +285,9 @@ function RlMatchForm({ initial, matches, profiles, currentUserId, defaults, onSa
         match_id: match.id,
         player_id: p.player_id,
         goals: Number(p.goals) || 0,
-        assists: Number(p.assists) || 0,
+        assists: teamStats ? Number(p.assists) || 0 : 0,
         saves: Number(p.saves) || 0,
-        mvp: won && p.mvp,
+        mvp: teamStats && won && p.mvp,
         mmr: showMmr && p.mmr !== '' ? Number(p.mmr) : null,
       }))
       const { error: sErr } = await supabase.from('rl_match_stats').insert(rows)
@@ -393,17 +397,19 @@ function RlMatchForm({ initial, matches, profiles, currentUserId, defaults, onSa
                     </option>
                   ))}
                 </select>
-                <button
-                  type="button"
-                  onClick={() => setPlayers((prev) => prev.map((x, j) => ({ ...x, mvp: j === i ? !x.mvp : false })))}
-                  disabled={!won}
-                  title={won ? 'MVP of the game' : 'MVP is always on the winning team'}
-                  className={`flex items-center gap-1 rounded-md px-2.5 text-xs font-semibold ring-1 transition disabled:opacity-30 ${
-                    p.mvp ? 'bg-amber-400/20 text-amber-200 ring-amber-400/60' : 'text-gray-400 ring-gray-700 hover:text-gray-200'
-                  }`}
-                >
-                  <Crown className="h-3.5 w-3.5" /> MVP
-                </button>
+                {teamStats && (
+                  <button
+                    type="button"
+                    onClick={() => setPlayers((prev) => prev.map((x, j) => ({ ...x, mvp: j === i ? !x.mvp : false })))}
+                    disabled={!won}
+                    title={won ? 'MVP of the game' : 'MVP is always on the winning team'}
+                    className={`flex items-center gap-1 rounded-md px-2.5 text-xs font-semibold ring-1 transition disabled:opacity-30 ${
+                      p.mvp ? 'bg-amber-400/20 text-amber-200 ring-amber-400/60' : 'text-gray-400 ring-gray-700 hover:text-gray-200'
+                    }`}
+                  >
+                    <Crown className="h-3.5 w-3.5" /> MVP
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn-ghost px-2"
@@ -414,8 +420,12 @@ function RlMatchForm({ initial, matches, profiles, currentUserId, defaults, onSa
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
-              <div className={`grid gap-1.5 ${showMmr ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-3'}`}>
-                {STAT_FIELDS.map(([key, label]) => (
+              <div
+                className={`grid gap-1.5 ${
+                  teamStats ? (showMmr ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-3') : showMmr ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'
+                }`}
+              >
+                {statFields.map(([key, label]) => (
                   <label key={key} className="block">
                     <span className="mb-0.5 block text-[10px] uppercase tracking-wide text-gray-500">{label}</span>
                     <input
@@ -430,7 +440,7 @@ function RlMatchForm({ initial, matches, profiles, currentUserId, defaults, onSa
                   </label>
                 ))}
                 {showMmr && (
-                  <label className="col-span-3 block sm:col-span-1">
+                  <label className={`block sm:col-span-1 ${teamStats ? 'col-span-3' : 'col-span-2'}`}>
                     <span className="mb-0.5 flex items-center justify-between text-[10px] uppercase tracking-wide text-gray-500">
                       MMR after
                       {p.mmr !== '' && prevMmr !== '' && <Delta value={Number(p.mmr) - prevMmr} className="normal-case" />}

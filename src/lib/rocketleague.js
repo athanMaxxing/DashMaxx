@@ -19,6 +19,8 @@ export const PLAYLISTS = [
 export const RANKED_PLAYLISTS = PLAYLISTS.filter((p) => !p.casualOnly)
 export const playlistLabel = (n) => PLAYLISTS.find((p) => p.value === n)?.label ?? '—'
 export const playlistLong = (n) => PLAYLISTS.find((p) => p.value === n)?.long ?? '—'
+/** Assists and MVP only mean something with teammates, so 1v1 games skip them. */
+export const hasTeamStats = (teamSize) => teamSize !== 1
 
 /** Matches containing every player id in `ids`. */
 export const rlPlayedTogether = (matches, ids) =>

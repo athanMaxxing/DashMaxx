@@ -124,7 +124,7 @@ export function buildPlayerStats({ profiles, owMatches, fnMatches, rlMatches = [
       r.maxGoals = Math.max(r.maxGoals, s.goals ?? 0)
       r.maxAssists = Math.max(r.maxAssists, s.assists ?? 0)
       r.maxSaves = Math.max(r.maxSaves, s.saves ?? 0)
-      if (s.mvp) r.mvps += 1
+      if (s.mvp && m.team_size !== 1) r.mvps += 1
       if (m.ranked && s.mmr != null) {
         r.peaks[m.team_size] = Math.max(r.peaks[m.team_size] ?? 0, s.mmr)
         const k = `${s.player_id}|${m.team_size}`

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Check, ChevronLeft, ChevronRight, ClipboardCopy, Crown, Newspaper } from 'lucide-react'
 import { useRocketLeagueData } from '../../context/RocketLeagueDataContext'
 import { pct } from '../../lib/fortnite'
-import { playlistLabel } from '../../lib/rocketleague'
+import { hasTeamStats, playlistLabel } from '../../lib/rocketleague'
 import GadgetCard, { GadgetMessage, GadgetSkeleton } from '../GadgetCard'
 import RankBadge, { Delta } from '../RankBadge'
 
@@ -36,7 +36,7 @@ export default function RlSessionRecap() {
         p.goals += s.goals
         p.assists += s.assists
         p.saves += s.saves
-        if (s.mvp) p.mvps += 1
+        if (s.mvp && hasTeamStats(m.team_size)) p.mvps += 1
         players.set(s.player_id, p)
       }
     }
