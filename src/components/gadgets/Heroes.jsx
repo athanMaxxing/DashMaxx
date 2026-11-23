@@ -3,12 +3,56 @@ import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
 import { useFortniteData } from '../../context/FortniteDataContext'
 import { useRocketLeagueData } from '../../context/RocketLeagueDataContext'
-import { isWin } from '../../lib/overwatch'
+import { isWin, modeLabel } from '../../lib/overwatch'
 import { pct, totalKills } from '../../lib/fortnite'
-import { mmrHistory, RANKED_PLAYLISTS, rankFor, TIER_HEX } from '../../lib/rocketleague'
+import { hasTeamStats, mmrHistory, playlistLabel, RANKED_PLAYLISTS, rankFor, TIER_HEX } from '../../lib/rocketleague'
 import { Chevrons, DeltaBars, GAME_COLORS, HeroPanel, ResultBars, Score, StatTile } from '../Hud'
 
 const DAY = 24 * 60 * 60 * 1000
+
+/* ---- Hover cards for the bar charts: one per game, with the score and who did what. ---- */
+
+/** "21:42" for today, "Mon 21:42" this week, else the date. */
+function when(iso) {
+  const d = new Date(iso)
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const age = Date.now() - d.getTime()
+  if (age < DAY && d.getDate() === new Date().getDate()) return time
+  if (age < 6 * DAY) return `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`
+  return d.toLocaleDateString()
+}
+const nameOf = (s) => s.profiles?.username ?? '?'
+
+function owTip(m, color = GAME_COLORS.overwatch) {
+  return {
+    color,
+    title: `${isWin(m.result) ? 'Win' : 'Loss'} · ${m.map}`,
+    sub: [m.mode && modeLabel(m.mode), when(m.created_at)].filter(Boolean).join(' · '),
+    lines: m.ow_match_stats.map((s) => [`${nameOf(s)}${s.hero ? ` · ${s.hero}` : ''}`, `${s.eliminations ?? 0} E / ${s.deaths ?? 0} D`]),
+  }
+}
+
+function fnTip(m, color = GAME_COLORS.fortnite) {
+  return {
+    color,
+    title: m.won ? 'Victory Royale' : `${totalKills(m)} kills`,
+    sub: `${m.mode} · ${when(m.created_at)}`,
+    lines: [...m.fn_match_stats].sort((a, b) => b.kills - a.kills).map((s) => [nameOf(s), `${s.kills} kills`]),
+  }
+}
+
+function rlTip(m, color = GAME_COLORS.rocketleague) {
+  const team = hasTeamStats(m.team_size)
+  return {
+    color,
+    title: `${m.won ? 'Win' : 'Loss'} ${m.our_goals}–${m.their_goals}`,
+    sub: `${m.ranked ? 'Ranked' : 'Casual'} ${playlistLabel(m.team_size)} · ${when(m.created_at)}`,
+    lines: m.rl_match_stats.map((s) => [
+      `${nameOf(s)}${team && s.mvp ? ' · MVP' : ''}`,
+      team ? `${s.goals}G ${s.assists}A ${s.saves}S` : `${s.goals}G ${s.saves}S`,
+    ]),
+  }
+}
 const WEEK = 7 * DAY
 
 /** Start of "tonight": 5am today, or 5am yesterday if it's still the early hours. */
@@ -47,9 +91,9 @@ export function TonightHero() {
     const from = sessionStart(now)
     const at = (m) => new Date(m.created_at).getTime()
     const games = [
-      ...ow.filter((m) => at(m) >= from).map((m) => ({ id: `ow${m.id}`, game: 'overwatch', win: isWin(m.result), at: at(m) })),
-      ...fn.filter((m) => at(m) >= from).map((m) => ({ id: `fn${m.id}`, game: 'fortnite', win: m.won, at: at(m) })),
-      ...rl.filter((m) => at(m) >= from).map((m) => ({ id: `rl${m.id}`, game: 'rocketleague', win: m.won, at: at(m) })),
+      ...ow.filter((m) => at(m) >= from).map((m) => ({ id: `ow${m.id}`, game: 'overwatch', win: isWin(m.result), at: at(m), tip: owTip(m) })),
+      ...fn.filter((m) => at(m) >= from).map((m) => ({ id: `fn${m.id}`, game: 'fortnite', win: m.won, at: at(m), tip: fnTip(m) })),
+      ...rl.filter((m) => at(m) >= from).map((m) => ({ id: `rl${m.id}`, game: 'rocketleague', win: m.won, at: at(m), tip: rlTip(m) })),
     ].sort((a, b) => a.at - b.at)
     const per = ['overwatch', 'fortnite', 'rocketleague']
       .map((g) => {
@@ -102,7 +146,7 @@ export function TonightHero() {
           </div>
           <div className="mt-4">
             <ResultBars
-              items={t.games.map((g) => ({ key: g.id, win: g.win, color: GAME_COLORS[g.game] }))}
+              items={t.games.map((g) => ({ key: g.id, win: g.win, color: GAME_COLORS[g.game], tip: g.tip }))}
               height={46}
               label={`Tonight's ${t.games.length} games in order. Tall bars are wins, short bars are losses, coloured by game.`}
             />
@@ -156,7 +200,7 @@ export function OwHero() {
       {d.last.length > 1 && (
         <div className="mt-4">
           <ResultBars
-            items={d.last.map((m) => ({ key: m.id, win: isWin(m.result), color: c, title: `${m.map} · ${m.result}` }))}
+            items={d.last.map((m) => ({ key: m.id, win: isWin(m.result), color: c, tip: owTip(m) }))}
             height={42}
             label={`Last ${d.last.length} matches, oldest first. Tall bars are wins.`}
           />
@@ -210,7 +254,7 @@ export function FnHero() {
               key: m.id,
               value: totalKills(m),
               color: m.won ? c : '#5c5468',
-              title: `${totalKills(m)} kills${m.won ? ' · Victory Royale' : ''}`,
+              tip: fnTip(m),
             }))}
             height={54}
             label={`Squad kills in the last ${d.last.length} games, oldest first. Gold bars are Victory Royales.`}
@@ -249,10 +293,25 @@ export function RlHero() {
     const nowEntry = history[history.length - 1]
     const rank = rankFor(nowEntry.mmr, playlist)
     const before = [...history].reverse().find((h) => now - new Date(h.at).getTime() >= WEEK) ?? history[0]
-    const deltas = history.slice(1).map((h, i) => ({ key: h.matchId, value: h.mmr - history[i].mmr, title: `${h.mmr} MMR (${h.mmr - history[i].mmr >= 0 ? '+' : ''}${h.mmr - history[i].mmr})` }))
+    const byId = new Map(matches.map((m) => [m.id, m]))
+    const deltas = history.slice(1).map((h, i) => {
+      const delta = h.mmr - history[i].mmr
+      const m = byId.get(h.matchId)
+      const base = m ? rlTip(m) : { lines: [] }
+      return {
+        key: h.matchId,
+        value: delta,
+        tip: {
+          ...base,
+          color: delta >= 0 ? c : '#f97316',
+          title: `${delta >= 0 ? '+' : ''}${delta} MMR · ${h.mmr}`,
+          sub: [m && base.title, rankFor(h.mmr, playlist)?.name, m && when(m.created_at)].filter(Boolean).join(' · '),
+        },
+      }
+    })
     const progress = rank.next != null ? (nowEntry.mmr - rank.start) / (rank.next - rank.start) : 1
     return { mmr: nowEntry.mmr, rank, week: nowEntry.mmr - before.mmr, deltas: deltas.slice(-16), progress }
-  }, [history, playlist, now])
+  }, [history, playlist, now, matches, c])
 
   const short = d?.rank.short.replace(/[a-z ]/g, '').replace('III', '3').replace('II', '2').replace('I', '1')
 
