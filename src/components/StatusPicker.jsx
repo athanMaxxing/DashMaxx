@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useRealtime } from '../lib/useRealtime'
-import { isFresh, saveStatus, STATUS, STATUSES } from '../lib/squadStatus'
+import { clearStatus, isFresh, saveStatus, STATUS, STATUSES } from '../lib/squadStatus'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from './Toast'
 
@@ -42,17 +43,41 @@ export function useMyStatus() {
     [mine, user.id, toast],
   )
 
+  const clear = useCallback(async () => {
+    const prev = mine
+    setMine((m) => (m ? { ...m, status: null, game: null } : m)) // optimistic
+    setSaving(true)
+    try {
+      await clearStatus(user.id)
+      toast.info('Status cleared')
+      return true
+    } catch (err) {
+      setMine(prev)
+      toast.error(err.message)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }, [mine, user.id, toast])
+
   const current = isFresh(mine) ? mine : null
-  return { mine, current, status: current ? STATUS[current.status] : null, set, saving }
+  return { mine, current, status: current ? STATUS[current.status] : null, set, clear, saving }
 }
 
 /** The 4 status buttons and the "Playing…" box. */
 export function StatusPicker({ my, onPicked }) {
-  const { current, mine, set, saving } = my
+  const { current, mine, set, clear, saving } = my
   const [game, setGame] = useState(() => current?.game ?? mine?.game ?? '')
 
   async function pick(status) {
     if ((await set(status, game)) && onPicked) onPicked()
+  }
+
+  async function reset() {
+    if (await clear()) {
+      setGame('')
+      if (onPicked) onPicked()
+    }
   }
 
   return (
@@ -85,7 +110,14 @@ export function StatusPicker({ my, onPicked }) {
           onKeyDown={(e) => e.key === 'Enter' && current && pick(current.status)}
         />
       </label>
-      <p className="text-[11px] text-gray-500">“On now” pings the squad.</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] text-gray-500">“On now” pings the squad.</p>
+        {current && (
+          <button type="button" onClick={reset} disabled={saving} className="btn-ghost shrink-0 px-2 py-1 text-[11px]">
+            <X className="h-3 w-3" /> Clear status
+          </button>
+        )}
+      </div>
     </div>
   )
 }

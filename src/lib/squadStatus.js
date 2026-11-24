@@ -11,7 +11,15 @@ export const STATUSES = [
 export const STATUS = Object.fromEntries(STATUSES.map((s) => [s.value, s]))
 export const STALE_MS = 12 * 60 * 60 * 1000 // statuses older than 12h count as "no status"
 
-export const isFresh = (row) => Boolean(row) && Date.now() - new Date(row.updated_at).getTime() < STALE_MS
+export const isFresh = (row) => Boolean(row?.status) && Date.now() - new Date(row.updated_at).getTime() < STALE_MS
+
+/** Back to "No status" (e.g. after a session). Keeps the row so the ping cooldown sticks. */
+export async function clearStatus(userId) {
+  const row = { user_id: userId, status: null, game: null, updated_at: new Date().toISOString() }
+  const { error } = await supabase.from('squad_status').upsert(row, { onConflict: 'user_id' })
+  if (error) throw error
+  return row
+}
 
 /**
  * Save the user's status. Setting "On now" also pushes a ping to the squad

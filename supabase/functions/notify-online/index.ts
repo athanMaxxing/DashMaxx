@@ -5,6 +5,9 @@
 //    A cooldown stops spam if someone toggles back and forth.
 // 2) Test mode — body { "test": true }: pushes a test notification to the CALLER's own
 //    devices (no cooldown), used by the "Send test notification" button in Settings.
+// 3) Shoutbox mode — body { "shout": <message id> }: called right after someone posts in
+//    the shoutbox. Pushes the message to every OTHER member's devices that have shoutbox
+//    pings on. Only the first message of a burst buzzes (see SHOUT_QUIET_MS).
 //
 // Every call logs one summary line (see Edge Functions → notify-online → Logs).
 //
@@ -16,6 +19,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 
 const COOLDOWN_MS = 20 * 60 * 1000 // at most one "on now" ping per person every 20 minutes
+const SHOUT_QUIET_MS = 2 * 60 * 1000 // no new shoutbox ping if the same person posted in the last 2 minutes
 const APP_URL = 'https://athanmaxxing.github.io/DashMaxx/'
 
 const cors = {
@@ -95,6 +99,48 @@ Deno.serve(async (req) => {
       JSON.stringify({ title: 'DashMaxx test 🔔', body: 'Notifications work on this device!', url: `${APP_URL}#/`, tag: 'test' }),
     )
     console.log(`test by ${name}: devices ${subs.length}, sent ${result.sent}, removed ${result.removed}`, result.failures.join(' | '))
+    return json({ ...result, devices: subs.length })
+  }
+
+  // ---- Shoutbox mode: "<name>: <message>" -----------------------------------
+  if (body?.shout) {
+    const { data: msg } = await admin
+      .from('shoutbox_messages')
+      .select('id, user_id, body, created_at')
+      .eq('id', body.shout)
+      .maybeSingle()
+    if (!msg || msg.user_id !== user.id) {
+      console.log(`shout by ${name}: skipped (message ${body.shout} not found or not theirs)`)
+      return json({ sent: 0, reason: 'message not found' })
+    }
+    const since = new Date(new Date(msg.created_at).getTime() - SHOUT_QUIET_MS).toISOString()
+    const { count } = await admin
+      .from('shoutbox_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .neq('id', msg.id)
+      .gte('created_at', since)
+      .lte('created_at', msg.created_at)
+    if (count) {
+      console.log(`shout by ${name}: skipped (posted recently)`)
+      return json({ sent: 0, reason: 'burst' })
+    }
+    const { data: subs } = await admin
+      .from('push_subscriptions')
+      .select('id, endpoint, p256dh, auth')
+      .neq('user_id', user.id)
+      .eq('notify_shoutbox', true)
+    if (!subs?.length) {
+      console.log(`shout by ${name}: skipped (nobody has shoutbox pings on)`)
+      return json({ sent: 0, reason: 'nobody else subscribed' })
+    }
+    const text = msg.body.length > 140 ? `${msg.body.slice(0, 139)}…` : msg.body
+    const result = await sendAll(
+      admin,
+      subs,
+      JSON.stringify({ title: `💬 ${name}`, body: text, url: `${APP_URL}#/?tab=squad`, tag: 'shoutbox' }),
+    )
+    console.log(`shout by ${name}: devices ${subs.length}, sent ${result.sent}, removed ${result.removed}`, result.failures.join(' | '))
     return json({ ...result, devices: subs.length })
   }
 

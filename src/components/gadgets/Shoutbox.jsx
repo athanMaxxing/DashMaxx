@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MessageSquare, Send, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { notifyShout } from '../../lib/push'
 import { timeAgo } from '../../lib/time'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
@@ -67,6 +68,7 @@ export default function Shoutbox() {
     if (err) setError(err.message)
     else {
       setBody('')
+      notifyShout(data.id).catch(() => {})
       setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data].slice(-LIMIT)))
     }
     setSending(false)

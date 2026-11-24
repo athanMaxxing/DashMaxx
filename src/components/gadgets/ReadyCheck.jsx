@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Radio } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { isFresh, saveStatus, STATUS, STATUSES } from '../../lib/squadStatus'
+import { clearStatus, isFresh, saveStatus, STATUS, STATUSES } from '../../lib/squadStatus'
 import { timeAgo } from '../../lib/time'
 import { useAuth } from '../../context/AuthContext'
 import { useSquadData } from '../../context/SquadDataContext'
@@ -63,6 +63,19 @@ export default function ReadyCheck() {
     }
   }
 
+  async function clearMine() {
+    setError('')
+    const prev = statuses[user.id]
+    setStatuses((s) => ({ ...s, [user.id]: { ...prev, status: null, game: null } })) // optimistic
+    setGame('')
+    try {
+      await clearStatus(user.id)
+    } catch (err) {
+      setStatuses((s) => ({ ...s, [user.id]: prev }))
+      setError(err.message)
+    }
+  }
+
   const rows = useMemo(() => {
     const order = { online: 0, soon: 1, later: 2, offline: 3 }
     return profiles
@@ -106,6 +119,11 @@ export default function ReadyCheck() {
             </button>
           ))}
         </div>
+        {mine && (
+          <button onClick={clearMine} className="btn-ghost w-full py-1 text-xs">
+            Clear my status
+          </button>
+        )}
       </div>
 
       {error && <p className="mb-2 text-sm text-red-400">{error}</p>}

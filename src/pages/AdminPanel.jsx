@@ -100,7 +100,7 @@ const DATASETS = [
     label: 'Ready Check statuses',
     select: 'user_id, status, game, updated_at',
     pk: ['user_id'],
-    describe: (r, u) => `${u[r.user_id] ?? '?'} · ${r.status}${r.game ? ` · ${r.game}` : ''}`,
+    describe: (r, u) => `${u[r.user_id] ?? '?'} · ${r.status ?? 'cleared'}${r.game ? ` · ${r.game}` : ''}`,
     when: (r) => r.updated_at,
   },
   {

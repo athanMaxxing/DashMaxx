@@ -77,6 +77,31 @@ export async function notifySquadOnline() {
   return data // { sent, devices, reason?, minutesLeft? }
 }
 
+/** Tell the squad about a shoutbox message I just posted (server skips bursts). */
+export async function notifyShout(messageId) {
+  const { data, error } = await supabase.functions.invoke('notify-online', { body: { shout: messageId } })
+  if (error) throw error
+  return data
+}
+
+/** Does THIS device get shoutbox pings? null if not subscribed (or the column isn't there yet). */
+export async function getShoutPref() {
+  const reg = await registration()
+  const sub = await reg?.pushManager.getSubscription()
+  if (!sub) return null
+  const { data, error } = await supabase.from('push_subscriptions').select('notify_shoutbox').eq('endpoint', sub.endpoint).maybeSingle()
+  if (error || !data) return null
+  return data.notify_shoutbox
+}
+
+export async function setShoutPref(on) {
+  const reg = await registration()
+  const sub = await reg?.pushManager.getSubscription()
+  if (!sub) throw new Error('Notifications are off on this device.')
+  const { error } = await supabase.from('push_subscriptions').update({ notify_shoutbox: on }).eq('endpoint', sub.endpoint)
+  if (error) throw error
+}
+
 /** Push a test notification to all of MY subscribed devices. */
 export async function sendTestPush() {
   const { data, error } = await supabase.functions.invoke('notify-online', { body: { test: true } })
